@@ -1,0 +1,6 @@
+[submodule "ripr-vis"]
+	path = ripr-vis
+	url = git@github.com:fleverest/ripr-vis.git
+[submodule "ripr"]
+	path = ripr
+	url = git@github.com:fleverest/ripr.git
