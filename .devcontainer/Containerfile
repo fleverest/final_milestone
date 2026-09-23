@@ -1,0 +1,128 @@
+# rocker/r-ver pins R itself (4.4.1, matching ripr's renv.lock) on Ubuntu
+# 22.04 and points install.packages() at a dated Posit Package Manager
+# snapshot, so binary installs are fast and reproducible.
+FROM rocker/r-ver:4.4.1
+
+ARG USERNAME=milestonepresentation
+ARG USER_UID=1000
+ARG USER_GID=${USER_UID}
+ARG NODE_MAJOR=22
+
+ARG POSITRON_VERSION=2026.09.1-2
+
+ARG QUARTO_VERSION=1.10.18
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# texlive-plain-generic supplies ulem.sty, which latexdiff requires and which
+# the -recommended/-extra sets do not pull in.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        texlive-latex-recommended \
+        texlive-latex-extra \
+        texlive-science \
+        texlive-fonts-recommended \
+        texlive-plain-generic \
+        texlive-bibtex-extra \
+        patch \
+        diffutils \
+        biber \
+        latexmk \
+        latexdiff \
+        ghostscript \
+        poppler-utils \
+        git \
+        openssh-client \
+        make \
+        less \
+        curl \
+        gnupg \
+        ca-certificates \
+        texlive-extra-utils \
+        libyaml-tiny-perl \
+        libfile-homedir-perl \
+        liblog-log4perl-perl \
+        liblog-dispatch-perl \
+    && rm -rf /var/lib/apt/lists/*
+
+# System dependencies for compiling R packages from source (renv builds most
+# packages itself rather than relying on prebuilt binaries). Grouped by what
+# they're for so it's obvious what to drop/extend later.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        # toolchain
+        build-essential gfortran cmake pkg-config \
+        # fs (async file watching) - fixes: libuv.so.1: cannot open shared object
+        libuv1-dev \
+        # curl/openssl/xml2/git-backed packages (httr, curl, xml2, gert, usethis, devtools)
+        libcurl4-openssl-dev libssl-dev libxml2-dev libgit2-dev \
+        zlib1g-dev libbz2-dev liblzma-dev libpcre2-dev \
+        # text shaping / fonts / image I/O (ragg, systemfonts, textshaping, svglite, Cairo, magick)
+        libfreetype6-dev libfontconfig1-dev libpng-dev libtiff5-dev libjpeg-dev \
+        libharfbuzz-dev libfribidi-dev libcairo2-dev libxt-dev libmagick++-dev \
+        # unicode (stringi)
+        libicu-dev \
+        # numerics: rcdd needs GMP, nloptr needs NLopt; MPFR/GSL for good measure
+        libgmp-dev libmpfr-dev libnlopt-dev libgsl-dev \
+        # graphs: the igraph binary (a targets dependency) links against GLPK
+        libglpk-dev \
+        # document rendering: knitr/rmarkdown (pandoc), R CMD check (qpdf)
+        pandoc qpdf \
+    && rm -rf /var/lib/apt/lists/*
+
+# renv installed system-wide so experiments/.Rprofile can activate the project
+# without bootstrapping a download first.
+RUN R -q -e 'install.packages("renv")'
+
+# Node from NodeSource; Ubuntu's own node package is too old for Claude Code.
+RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+        | gpg --dearmor -o /usr/share/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main" \
+        > /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd --gid ${USER_GID} ${USERNAME} \
+    && useradd --uid ${USER_UID} --gid ${USER_GID} --create-home --shell /bin/bash ${USERNAME}
+
+# Create the volume mount points before they are mounted, so the named volumes
+# inherit this ownership instead of being created root-owned.
+# npm-global keeps global installs (e.g. Claude Code) out of /usr/lib.
+# The renv cache holds every package renv has ever built, so a rebuilt
+# container restores the experiments library by linking rather than compiling.
+ENV RENV_PATHS_CACHE=/home/${USERNAME}/.cache/R/renv
+RUN mkdir -p /home/${USERNAME}/.claude /home/${USERNAME}/.npm-global ${RENV_PATHS_CACHE} \
+    && chown -R ${USER_UID}:${USER_GID} /home/${USERNAME}
+
+ENV NPM_CONFIG_PREFIX=/home/${USERNAME}/.npm-global
+ENV PATH=/home/${USERNAME}/.npm-global/bin:${PATH}
+
+# Install claude code
+RUN npm i -g @anthropic-ai/claude-code
+
+# Install positron server manually to sidestep issue with positron server...
+# Version of positron server to be installed:
+RUN curl -fsSL https://cdn.posit.co/positron/releases/reh/x86_64/positron-reh-linux-x64-${POSITRON_VERSION}.tar.gz \
+    -o /tmp/positron-server.tar.gz \
+    && mkdir -p /home/milestonepresentation/.positron-server/positron-server-${POSITRON_VERSION} \
+    && tar -xzf /tmp/positron-server.tar.gz \
+        -C /home/milestonepresentation/.positron-server/positron-server-${POSITRON_VERSION} --strip-components=1 \
+    && rm /tmp/positron-server.tar.gz \
+    && chown -R ${USER_UID}:${USER_GID} /home/${USERNAME}/.positron-server
+
+# Install Quarto
+RUN curl -fsSL https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-amd64.deb \
+    -o /tmp/quarto.deb \
+    && dpkg -i /tmp/quarto.deb \
+    && rm /tmp/quarto.deb
+
+
+# Prepare ~/.ssh so devcontainer.json can bind-mount in the host's git signing/auth
+# key, and point github.com at that key. Pre-seed its host key so the first git
+# operation isn't an interactive TOFU prompt.
+RUN mkdir -p /home/${USERNAME}/.ssh \
+    && ssh-keyscan -t rsa,ed25519 github.com >> /home/${USERNAME}/.ssh/known_hosts 2>/dev/null \
+    && chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}/.ssh \
+    && chmod 700 /home/${USERNAME}/.ssh \
+    && chmod 600 /home/${USERNAME}/.ssh/known_hosts
+
+USER ${USERNAME}
+WORKDIR /workspaces

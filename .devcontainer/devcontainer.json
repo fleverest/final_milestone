@@ -1,0 +1,26 @@
+{
+    "name": "milestonepresentation",
+    "build": {
+        "dockerfile": "Containerfile",
+        "context": "."
+    },
+    "runArgs": [
+        "--userns=keep-id:uid=1000,gid=1000",
+        "--name=milestonepresentation",
+        "--security-opt",
+        "label=disable"
+    ],
+    "updateRemoteUserUID": false,
+    "containerUser": "milestonepresentation",
+    "remoteUser": "milestonepresentation",
+    "mounts": [
+        "source=milestonepresentation-claude-config,target=/home/milestonepresentation/.claude,type=volume",
+        "source=milestonepresentation-renv-cache,target=/home/milestonepresentation/.cache/R/renv,type=volume",
+        "source=../../.ssh/id_ed25519_signing,target=/home/milestonepresentation/.ssh/id_ed25519_signing,type=bind,readonly",
+        "source=/run/user/1000/ssh-agent.socket,target=/ssh-agent,type=bind"
+    ],
+    "containerEnv": {
+        "SSH_AUTH_SOCK": "/ssh-agent"
+    },
+    "postStartCommand": "sh .devcontainer/setup.sh"
+}

@@ -1,0 +1,20 @@
+---
+title: "The cost of decomposition in risk-limiting election audits"
+format:
+  revealjs:
+    embed-resources: true
+    theme: simple
+    css: search-slides.css
+    html-math-method: mathml
+    slide-number: false
+    width: 1280
+    height: 760
+revealjs-plugins:
+  - editable
+filters:
+  - tikz
+  - editable
+execute:
+  echo: false
+  warning: false
+---
