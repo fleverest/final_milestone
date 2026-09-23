@@ -46,6 +46,7 @@ filters:
 engine: markdown
 execute:
   echo: false
+output-file: index.html
 ---
 
 <!--
