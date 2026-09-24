@@ -1,5 +1,25 @@
 /* Styles for the interactive widgets in slides/interactive/gw.js. */
-.gw { font-size: 20px; line-height: 1.3; }
+
+/* Palette, read by gw.js at load. Monokai on paper, to match slides/monokai-paper.scss. */
+:root {
+  --gw-bg: #f6f1e7;
+  --gw-ink: #272822;
+  --gw-muted: #6f6a5c;
+  --gw-line: #6a6656;
+  --gw-grid: #e2dccd;
+  --gw-hatch: #8a8573;
+  --gw-contour: #272822;
+  --gw-outline: #272822;
+  --gw-panel: #ece5d6;
+  --gw-accent: #7058be;
+  --gw-w1: #0072B2;   /* alternative: Okabe-Ito blue, as wone in the TikZ */
+  --gw-w0: #D55E00;   /* null: Okabe-Ito vermillion, as wzero in the TikZ */
+  --gw-run1: #d6195f;
+  --gw-run2: #5f8f00;
+  --gw-run3: #7b4fd6;
+}
+
+.gw { font-size: 20px; line-height: 1.3; color: var(--gw-ink); }
 .gw svg { display: block; overflow: visible; user-select: none; -webkit-user-select: none; }
 .gw svg text { font-family: inherit; }
 .gw-ternary { max-height: 540px; }
@@ -9,34 +29,35 @@
 .gw-controls { gap: 8px 22px; }
 
 .gw-ctl { display: inline-flex; align-items: center; gap: 8px; font-size: 18px; }
-.gw-ctl input[type=range] { width: 150px; }
+.gw-ctl input[type=range] { width: 150px; accent-color: var(--gw-accent); }
+.gw-ctl input[type=checkbox] { accent-color: var(--gw-accent); }
 .gw-val { font-variant-numeric: tabular-nums; min-width: 2.2em; }
 
 .gw-btn {
   font: inherit; font-size: 16px; padding: 3px 12px; cursor: pointer;
-  border: 1px solid #bbb; border-radius: 6px; background: #f7f7f7; color: #222;
+  border: 1px solid #c8c0ad; border-radius: 6px; background: var(--gw-panel); color: var(--gw-ink);
 }
-.gw-btn:hover { background: #ececec; }
+.gw-btn:hover { background: #e3dac6; }
 .gw-tabs { display: inline-flex; }
 .gw-tab { border-radius: 0; margin-left: -1px; }
 .gw-tab:first-child { border-radius: 6px 0 0 6px; margin-left: 0; }
 .gw-tab:last-child { border-radius: 0 6px 6px 0; }
-.gw-tab.on { background: #222; color: #fff; border-color: #222; }
+.gw-tab.on { background: var(--gw-accent); color: #fff; border-color: var(--gw-accent); }
 
 .gw-readout {
   font-size: 17px; font-variant-numeric: tabular-nums;
-  border-top: 1px solid #ddd; padding-top: 6px;
+  border-top: 1px solid var(--gw-panel); padding-top: 6px;
 }
 .gw-r { display: flex; justify-content: space-between; gap: 16px; padding: 1px 0; }
-.gw-rl { color: #555; }
+.gw-rl { color: var(--gw-muted); }
 .gw-rv { text-align: right; white-space: nowrap; }
-.gw-note { font-size: 13px; color: #888; }
-.gw-good { color: #2166ac; font-weight: 600; }
-.gw-bad { color: #b2182b; font-weight: 600; }
+.gw-note { font-size: 13px; color: var(--gw-muted); }
+.gw-good { color: #1a8fa8; font-weight: 600; }
+.gw-bad { color: #d6195f; font-weight: 600; }
 .gw-inline { display: flex; gap: 28px; border-top: none; padding-top: 0; margin-left: auto; }
 .gw-inline .gw-r { gap: 10px; }
 
-.gw-cslider { border-top: 1px solid #ddd; padding-top: 4px; }
+.gw-cslider { border-top: 1px solid var(--gw-panel); padding-top: 4px; }
 
 .gw-playback .gw-panels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .gw-playback .gw-ternary { max-height: 300px; }

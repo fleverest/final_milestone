@@ -1,0 +1,17 @@
+\documentclass[tikz]{standalone}
+% Template for the tikz filter (tikz.tex-template in presentation.qmd).
+% Slide palette (Monokai on paper): black is the foreground and white the
+% background, so default text, lines and fill=white label boxes follow the theme. xcolor mixes
+% black!x against its built-in white, so shaded regions use nullfill instead.
+$additional-packages$
+$for(header-includes)$
+$it$
+$endfor$
+\definecolor{black}{HTML}{272822}
+\definecolor{white}{HTML}{F6F1E7}
+\definecolor{nullfill}{HTML}{DDD9CF}
+\definecolor{nullfill8}{HTML}{E5E1D7}
+\begin{document}
+\color{black}
+$body$
+\end{document}

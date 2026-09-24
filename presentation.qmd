@@ -1,12 +1,12 @@
 ---
 title: "The cost of decomposition in risk-limiting election audits"
-subtitle: "Final review milestone"
 author: "Floyd Everest"
-institute: "Department of Econometrics and Business Statistics, Monash University"
-date: "TODO: milestone date"
+institute: "Econometrics and Business Statistics, Monash University"
+date: "28 September, 2026"
 bibliography: bibliography.bib
 format:
   revealjs:
+    theme: [default, slides/monokai-paper.scss]
     width: 1280
     height: 720
     slide-number: c/t
@@ -18,18 +18,18 @@ format:
       text: |
         <style>
           .placeholder {
-            border: 2px dashed #999; border-radius: 8px; padding: 0.6em 1em;
-            color: #666; background: #f6f6f6; font-size: 0.55em; text-align: left;
+            border: 2px dashed #a8a18d; border-radius: 8px; padding: 0.6em 1em;
+            color: #6f6a5c; background: #efe8da; font-size: 0.55em; text-align: left;
           }
           .placeholder::before { content: "FIGURE TO BUILD: "; font-weight: bold; }
           .fetch {
-            border: 2px dashed #0072B2; border-radius: 8px; padding: 0.6em 1em;
-            color: #0072B2; background: #f2f7fb; font-size: 0.55em; text-align: left;
+            border: 2px dashed #1a8fa8; border-radius: 8px; padding: 0.6em 1em;
+            color: #1a8fa8; background: #e9eee6; font-size: 0.55em; text-align: left;
           }
           .fetch::before { content: "FIGURE TO FETCH: "; font-weight: bold; }
           .bigq { font-size: 1.6em; text-align: center; margin-top: 2em; }
-          .new-row td { background: #fff4e0; }
-          .paused-row td { background: #eef0f3; }
+          .new-row td { background: #f6dfc4; }
+          .paused-row td { background: #e8e2d4; }
         </style>
         <link rel="stylesheet" href="slides/interactive/gw.css">
         <script src="slides/interactive/d3.min.js"></script>
@@ -38,11 +38,9 @@ format:
     include-after-body: suprema-anim.html
 tikz:
   svg-engine: pdftocairo
-revealjs-plugins:
-  - editable
+  tex-template: slides/tikz-theme.tex
 filters:
   - tikz
-  - editable
 engine: markdown
 execute:
   echo: false
@@ -50,131 +48,102 @@ embed-resources: true
 output-file: index.html
 ---
 
-<!--
-====================================================================
-HOW TO USE THIS TEMPLATE
-====================================================================
+# [The cost of decomposition in]{style="color: gray;"} risk-limiting election audits
 
-Render:   quarto render presentation.qmd
-Preview:  quarto preview presentation.qmd
+## But what is an election audit? {style="--list-gap: 1.8em"}
 
-Every slide is in place with draft bullet text and speaker notes.
-Two kinds of boxes mark missing figures:
+- After an election, we get a reported outcome:
+  * Who won
+  * [Possibly: a digital record of each vote (CVRs)]{.fragment .strikeout fragment-index=1} [Ballot-polling]{.fragment .after-strike fragment-index=1 style="color: #d6195f;"}
 
-  .fetch        an existing figure to export from the thesis repo,
-                the ALE manuscript project, or the milestone report.
-  .placeholder  a figure that does not exist yet;
-                the full specification is in the HTML comment above it.
-
-Delete each box once its figure is in place.
-
-Time budget: 45 minutes including questions, so aim for 30 minutes of talk.
-Section budgets are in the comment at the top of each section.
-Interactive slides take 1.5 to 2 minutes each, not 1.
-Slides marked OPTIONAL in their comment are the first to cut.
-
---------------------------------------------------------------------
-INTERACTIVE WIDGETS
---------------------------------------------------------------------
-
-slides/interactive/gw.js   all six widgets (plain script, local d3, works from file://)
-slides/interactive/gw.css  their styles
-slides/data/make_traces.R  ripr runs for widget 6 and the fitted RIPr overlay
-                           (Rscript --vanilla slides/data/make_traces.R, about a minute)
-slides/data/bundle.py      bundles the JSON into gw_data.js, which the deck loads
-
-Each widget's demo script is in its slide's speaker notes.
-Still to do: capture fallback PNGs with each widget's snapshot button (the states
-are listed in a comment on each widget slide) into slides/fallback/, and record a
-video of widget 6. Test the deck with the network off: MathJax still loads from a CDN.
-
---------------------------------------------------------------------
-FIGURES TO FETCH, BY SOURCE
---------------------------------------------------------------------
-
-A. From the thesis repo. The results figures are already PDFs. Convert them to SVG:
-
-   cd /workspaces/thesis
-   mkdir -p slides/fig
-   for f in worst_case_cdfs reject_probability expected_sample_size alpha_sampling_effort; do
-     pdftocairo -svg figures/$f.pdf slides/fig/$f.svg
-   done
-
-   worst_case_cdfs        (Bayesian audits, calibration)
-   reject_probability     (Bayesian audits, results)
-   expected_sample_size   (Bayesian audits, results)
-   alpha_sampling_effort  (backup slide on sampling with replacement)
-
-   These were sized for a printed page. If axis text is under about 18pt on the
-   slide, regenerate from the R scripts with a larger base font instead.
-
-B. From the ALE manuscript project (not in this repo). Figure numbers are those
-   of the 20 September 2026 draft:
-
-   Figure 1(a)  plurality null for K = 3 with the point alternative   (optional)
-   Figure 2     planar Gaussian polyhedral null                     (generality slide)
-   Figure 4     growth against wall-clock time, point alternative   (ALE results)
-   Figure 5     log L_W against time, point alternative             (backup)
-   Figure 6     as Figure 4, sampled truncated Dirichlet            (backup)
-   Figure 8     bounded growth against EM sweep count m             (backup, hybrid)
-   Figure 9     growth cost of rigour against tolerance             (bounding slide)
-   Figure 10    branch-and-bound nodes and seconds                  (backup, scaling question)
-   Table 3      bounded growth by method and scenario               (condense to one slide)
-
-   Re-save from the plotting scripts rather than cropping the PDF.
-   For ggplot2 use ggsave(width = 10, height = 5.6, dpi = 200) and a base font of 18.
-   The draft figures come from a 30 second budget.
-   If the 600 second cluster run has finished by the talk, use it and say which budget the figure shows.
-
-C. From the milestone report (report/progress_report_2026.tex):
-   the Gantt chart is rebuilt below as a Mermaid chart so it can gain rows.
-   If you prefer the original look, compile the report and crop its last page with
-   pdftocairo -svg -f 7 -l 7 report/build/progress_report_2026.pdf slides/fig/gantt.svg
-
-====================================================================
--->
-
-# Setting
-
-<!-- Section budget: 5 minutes, 5 slides. -->
-
-## Election audits: when and why
-
-- An election reports an outcome. A *risk-limiting audit* checks it against the paper ballots [@stark2008rla; @agitrla].
-- If the reported outcome is wrong, the audit escalates to a full hand count with probability at least $1-\alpha$.
-- If it is right, we would like to confirm that from as few ballots as possible.
-- Used in practice: TODO add the jurisdictions you want to name (US states, pilot audits), with sources.
+- An *election audit* checks it against the ground-truth *audit trail*
+  * (e.g. original paper ballots)
+  * If the audit concludes it is correct $\longrightarrow$ *Certify!*
+  * Otherwise, something went wrong $\longrightarrow$ *recount!*
 
 ::: notes
-Timing: 1 minute.
-The when: after the count, before certification.
-The why: paper ballots are the ground truth, and the audit is the only step that looks at them statistically.
+- Timing: 1 minute.
+- when: after the election
+  * after all votes have been submitted
+  * and after they have all been counted
+  * when reported outcome is available
+- why:
+  * check that it is correct---outcome may come from electronic systems with bugs
+  * want to verify with high confidence without redoing the whole count by hand (expensive)
+- (NEXT) I study ballot polling audits, that get minimal information and are easier
+  * Only know who won
+  * And have access to the ground-truth ballots
 :::
 
-## Ballot polling is a sequential test
+## *Risk-limiting* audits {style="--list-gap: 1.5em"}
 
-- Draw ballots uniformly at random, one at a time: $X_1, X_2, \dots$
-- After each draw, either stop and certify, or keep sampling.
-- $H_0$: the reported winner did not win. Certifying is rejecting $H_0$.
-- *Risk-limiting* means level $\alpha$ under the audit's stopping rule, whatever it is:
-$$\sup_{\boldsymbol\theta \in \Theta_0} P_{\boldsymbol\theta}(\text{certify}) \le \alpha.$$
-- Throughout: sampling with replacement, so the $X_t$ are i.i.d.
+- Election audits are hypothesis tests
+
+- Control Type I error probability at level $\alpha$ [(e.g. 0.05)]{.side}
+  * If the reported outcome is wrong:  $\mathrm{P}[\text{recount}]\geq 1-\alpha$.
+
+- If it is correct:
+  * we want to confirm that using as few ballots as possible
+  * Goal: minimise the *expected* sample size
 
 ::: notes
-Timing: 1 minute.
-Flag with-replacement early; the backup slide has the finite-population argument if asked.
+- A Risk-limiting audit (or RLA) frames the election audit as a statistical hypothesis test
+- Specifically, we control Type~I error at some predetermined level alpha
+- If in fact the reported outcome is wrong, we correct it with probability at least 1-alpha
+- If it is correct, then the goal is to prove that
+- By observing as few ballots (and thus as cheaply) as possible
+- To do that, we may want minimise the average number of ballots required, for instance
 :::
 
-## Two candidates: a Bernoulli test
 
-- $\theta$ is the reported winner's share, $X_t \sim \mathrm{Bernoulli}(\theta)$.
+## The hypothesis test {style="--list-gap: 2.5em"}
+
+- $H_0$: the reported outcome is incorrect
+  * certify = reject $H_0$
+
+- $H_1$: The reported outcome is correct
+  * recount = accept $H_0$
+
+
+## Sequential test
+
+- Observing votes sequentially: $X_1,X_2,\dots$
+
+- Construct a stochastic process $E_t$ to summarise "evidence against $H_0$"
+
+(Animation here of E_t against t, stopping when E_t hits some threshold.)
+
+
+## Plurality elections {style="--list-gap: 2.5em"}
+
+- Voters select only one candidate
+
+- Whoever gets the most votes wins
+
+
+## $K$-candidate plurality
+
+* $\theta = (\theta_1,\theta_2,\dots,\theta_K)$ are the proportions of votes for each candidate
+
+* Candidate 1 is the reported winner
+
+- $H_0$: candidate 1 did not really win
+  * $\theta_1\leq\theta_i$ *for some* $i\neq1$
+
+- $H_1$: candidate 1 did win
+  * $\theta_1>\theta_i$ *for all* $i\neq1$
+
+
+## Two candidates: easy
+
+- Drawing observations at random: $X_t \sim \mathrm{Bernoulli}(\theta)$.
 - $H_0: \theta \le 1/2$ against $H_1: \theta > 1/2$.
 - BRAVO [@bravo2012] and ALPHA [@alpha_mart] solve this well.
 
 ```{.tikz width="75%"}
 \begin{tikzpicture}[x=12cm, y=1cm]
   % Null H0: theta <= 1/2, shaded as in the ternary diagrams
-  \fill[black!12] (0,0) rectangle (0.5,1.4);
+  \fill[nullfill] (0,0) rectangle (0.5,1.4);
 
   % Axis
   \draw[thick] (0,0) -- (1,0);
@@ -234,7 +203,7 @@ the alternative used in every widget; read its three coordinates aloud.
   \coordinate (M13) at (barycentric cs:T1=1,T3=1);      % midpoint of T1--T3 edge
 
   % Shade H1 region: candidate 1 is the plurality winner
-  \fill[black!12] (T2) -- (M12) -- (G) -- (M13) -- (T3) -- cycle;
+  \fill[nullfill] (T2) -- (M12) -- (G) -- (M13) -- (T3) -- cycle;
 
   % Simplex outline
   \draw[thick] (T1) -- (T2) -- (T3) -- cycle;
@@ -283,7 +252,7 @@ The gap between the null and its hull is where candidate 1 has a plurality but n
   \coordinate (M12) at (barycentric cs:T1=1,T2=1);  % midpoint of T1--T2 edge
 
   % Shade H_1^{(2)} region: theta1 > theta2  (T1 side of the M12--T3 line)
-  \fill[black!12] (T2) -- (T3) -- (M12) -- cycle;
+  \fill[nullfill] (T2) -- (T3) -- (M12) -- cycle;
 
   % Simplex outline
   \draw[thick] (T1) -- (T2) -- (T3) -- cycle;
@@ -315,7 +284,7 @@ The gap between the null and its hull is where candidate 1 has a plurality but n
   \coordinate (M13) at (barycentric cs:T1=1,T3=1);  % midpoint of T1--T3 edge
 
   % Shade H_1^{(3)} region: theta1 > theta3  (T1 side of the M13--T2 line)
-  \fill[black!12] (T3) -- (T2) -- (M13) -- cycle;
+  \fill[nullfill] (T3) -- (T2) -- (M13) -- cycle;
 
   % Simplex outline
   \draw[thick] (T1) -- (T2) -- (T3) -- cycle;
@@ -388,7 +357,7 @@ This is the thesis question. Say it as "what does the decomposition cost, in bal
   \coordinate (M13) at (barycentric cs:T1=1,T3=1);
 
   % H0 shading (bottom region)
-  \fill[black!8] (T2) -- (M12) -- (G) -- (M13) -- (T3) -- cycle;
+  \fill[nullfill8] (T2) -- (M12) -- (G) -- (M13) -- (T3) -- cycle;
 
   % W1 contours (prior under the alternative), clipped to H1
   \begin{scope}
@@ -410,8 +379,8 @@ This is the thesis question. Say it as "what does the decomposition cost, in bal
   % Region + prior labels
   \node at (barycentric cs:T1=0.62,T2=0.19,T3=0.19) {$H_1$};
   \node[wone, fill=white, inner sep=2pt, font=\small, yshift=-6pt] at (barycentric cs:T1=0.5,T2=0.27,T3=0.23) {$W_1$};
-  \node[fill=black!8, inner sep=2pt] at (barycentric cs:T1=0.12,T2=0.46,T3=0.42) {$H_0$};
-  \node[wzero, fill=black!8, inner sep=2pt, font=\small] at (barycentric cs:T1=0.22,T2=0.46,T3=0.32) {$W_0$};
+  \node[fill=nullfill8, inner sep=2pt] at (barycentric cs:T1=0.12,T2=0.46,T3=0.42) {$H_0$};
+  \node[wzero, fill=nullfill8, inner sep=2pt, font=\small] at (barycentric cs:T1=0.22,T2=0.46,T3=0.32) {$W_0$};
 
   % Vertex labels
   \node[above]       at (T1) {$\theta_1$};
@@ -585,9 +554,11 @@ Optional continuation is what the batch construction at the end relies on, so sa
 
 ## Two candidates: the likelihood ratio
 
+::: {style="font-size: 0.8em;"}
 $$E = \prod_{t=1}^n \left(\frac{\mu}{\nu}\right)^{X_t}\left(\frac{1-\mu}{1-\nu}\right)^{1-X_t},
 \qquad
 g(\theta) = \mathbb{E}_\theta[E] = \left(\theta\frac{\mu}{\nu} + (1-\theta)\frac{1-\mu}{1-\nu}\right)^n.$$
+:::
 
 <!-- Fallback PNGs still to capture with the snapshot button: the four demo states in the notes. -->
 
@@ -652,7 +623,7 @@ No need to specify ALPHA's truncated shrinkage estimator.
   \coordinate (M13) at (barycentric cs:T1=1,T3=1);
 
   % Shade H_0^{(2)} region: theta1 <= theta2  (T1 side of the M12--T3 line)
-  \fill[black!12] (T2) -- (T3) -- (M12) -- cycle;
+  \fill[nullfill] (T2) -- (T3) -- (M12) -- cycle;
 
   % W1 contours (prior under the alternative), clipped to H1
   \begin{scope}
@@ -696,7 +667,7 @@ No need to specify ALPHA's truncated shrinkage estimator.
   \coordinate (M13) at (barycentric cs:T1=1,T3=1);
 
   % Shade H_1^{(3)} region: theta1 > theta3  (T1 side of the M13--T2 line)
-  \fill[black!12] (T3) -- (T2) -- (M13) -- cycle;
+  \fill[nullfill] (T3) -- (T2) -- (M13) -- cycle;
 
   % W1 contours (prior under the alternative), clipped to H1
   \begin{scope}
@@ -823,7 +794,7 @@ Compare widget 1: in 1D the line is a point, and the null fits on one side.
   \coordinate (M13) at (barycentric cs:T1=1,T3=1);
 
   % H0 shading (bottom region)
-  \fill[black!8] (T2) -- (M12) -- (G) -- (M13) -- (T3) -- cycle;
+  \fill[nullfill8] (T2) -- (M12) -- (G) -- (M13) -- (T3) -- cycle;
 
   % W1 contours (prior under the alternative), clipped to H1
   \begin{scope}
@@ -839,8 +810,8 @@ Compare widget 1: in 1D the line is a point, and the null fits on one side.
   % Region + prior labels
   \node at (barycentric cs:T1=0.62,T2=0.19,T3=0.19) {$H_1$};
   \node[wone, fill=white, inner sep=2pt, font=\small, yshift=-6pt] at (barycentric cs:T1=0.5,T2=0.27,T3=0.23) {$W_1$};
-  \node[fill=black!8, inner sep=2pt] at (barycentric cs:T1=0.12,T2=0.46,T3=0.42) {$H_0$};
-  \node[wzero, fill=black!8, inner sep=2pt, font=\small] at (barycentric cs:T1=0.35,T2=0.45,T3=0.2) {$W_0$};
+  \node[fill=nullfill8, inner sep=2pt] at (barycentric cs:T1=0.12,T2=0.46,T3=0.42) {$H_0$};
+  \node[wzero, fill=nullfill8, inner sep=2pt, font=\small] at (barycentric cs:T1=0.35,T2=0.45,T3=0.2) {$W_0$};
 
   % Vertex labels
   \node[above]       at (T1) {$\theta_1$};

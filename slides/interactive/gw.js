@@ -18,10 +18,24 @@ window.GW = (function () {
   var d3 = window.d3;
 
   // --- palette --------------------------------------------------------------
-  var W1 = "#0072B2";   // alternative, as in the thesis TikZ
-  var W0 = "#D55E00";   // null
-  var INK = "#222";
-  var MUTED = "#666";
+  // Theme colours come from CSS custom properties (gw.css), so the widgets
+  // follow the deck's theme; the fallbacks are for a light page.
+  var rootStyle = typeof getComputedStyle === "function" ? getComputedStyle(document.documentElement) : null;
+  function themed(name, fallback) {
+    var v = rootStyle ? rootStyle.getPropertyValue(name).trim() : "";
+    return v || fallback;
+  }
+  var W1 = themed("--gw-w1", "#0072B2");   // alternative, as in the thesis TikZ
+  var W0 = themed("--gw-w0", "#D55E00");   // null
+  var INK = themed("--gw-ink", "#222");        // text
+  var MUTED = themed("--gw-muted", "#666");    // secondary text
+  var LINE = themed("--gw-line", "#555");      // outlines and axes
+  var GRID = themed("--gw-grid", "#e4e4e4");   // faint grid
+  var BG = themed("--gw-bg", "#fff");          // page background
+  var HATCH = themed("--gw-hatch", "#777");    // the null's hatch
+  // Drawn over the field, whose centre (g = 1) is near white.
+  var CONTOUR = themed("--gw-contour", "#555");
+  var OUTLINE = themed("--gw-outline", "#222"); // atom markers
   var LIM = Math.log10(20);
   // log10 g on a red-blue scale centred at g = 1, red above 1. Atoms get a
   // dark outline so the blue and vermillion markers stay visible on it.
@@ -300,7 +314,7 @@ window.GW = (function () {
       var cv = document.createElement("canvas");
       cv.width = vb.width * scale; cv.height = vb.height * scale;
       var ctx = cv.getContext("2d");
-      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height);
+      ctx.fillStyle = BG; ctx.fillRect(0, 0, cv.width, cv.height);
       ctx.drawImage(img, 0, 0, cv.width, cv.height);
       var a = document.createElement("a");
       a.download = (name || "widget") + ".png";
@@ -314,7 +328,7 @@ window.GW = (function () {
     var p = defs.append("pattern").attr("id", id).attr("patternUnits", "userSpaceOnUse")
       .attr("width", 8).attr("height", 8).attr("patternTransform", "rotate(45)");
     p.append("line").attr("x1", 0).attr("y1", 0).attr("x2", 0).attr("y2", 8)
-      .attr("stroke", colour || "#777").attr("stroke-width", 2.2);
+      .attr("stroke", colour || HATCH).attr("stroke-width", 2.2);
   }
 
   // Vertical colour bar for log10 of the plotted quantity.
@@ -326,11 +340,11 @@ window.GW = (function () {
       grad.append("stop").attr("offset", t).attr("stop-color", fieldColour(-LIM + 2 * LIM * t));
     });
     g.append("rect").attr("x", x).attr("y", y0).attr("width", 16).attr("height", y1 - y0)
-      .attr("fill", "url(#" + id + ")").attr("stroke", "#999").attr("stroke-width", 0.6);
+      .attr("fill", "url(#" + id + ")").attr("stroke", LINE).attr("stroke-width", 0.6);
     var s = d3.scaleLinear([-LIM, LIM], [y1, y0]);
     [[0.1, "1/10"], [0.5, "1/2"], [1, "1"], [2, "2"], [10, "10"]].forEach(function (t) {
       var yy = s(Math.log10(t[0]));
-      g.append("line").attr("x1", x + 16).attr("x2", x + 21).attr("y1", yy).attr("y2", yy).attr("stroke", "#555");
+      g.append("line").attr("x1", x + 16).attr("x2", x + 21).attr("y1", yy).attr("y2", yy).attr("stroke", LINE);
       g.append("text").attr("x", x + 24).attr("y", yy + 4).attr("font-size", 13).attr("fill", INK).text(t[1]);
     });
     g.append("text").attr("x", x + 8).attr("y", y0 - 12).attr("text-anchor", "middle")
@@ -366,9 +380,9 @@ window.GW = (function () {
     var hatchLayer = svg.append("path").attr("d", NULL_POLY).attr("fill", "url(#" + hat + ")")
       .attr("opacity", 0.35).attr("pointer-events", "none");
     svg.append("g").selectAll("path").data(PIECES).join("path").attr("d", String)
-      .attr("fill", "none").attr("stroke", "#777").attr("stroke-width", 1)
+      .attr("fill", "none").attr("stroke", HATCH).attr("stroke-width", 1)
       .attr("stroke-dasharray", "1.5 3").attr("pointer-events", "none");
-    svg.append("path").attr("d", SIMPLEX).attr("fill", "none").attr("stroke", "#555")
+    svg.append("path").attr("d", SIMPLEX).attr("fill", "none").attr("stroke", LINE)
       .attr("stroke-width", 1.4).attr("pointer-events", "none");
     var marks = svg.append("g");      // overlays: fitted rings, search argmax
     var atoms = svg.append("g");
@@ -394,7 +408,7 @@ window.GW = (function () {
           .attr("d", Gd.path).attr("fill", function (d) { return fieldColour(d.value); });
         var line = d3.contours().size([Gd.nx, Gd.ny]).thresholds([0])(zz);
         contour.selectAll("path").data(line).join("path").attr("d", Gd.path)
-          .attr("fill", "none").attr("stroke", "#555").attr("stroke-width", 2.2)
+          .attr("fill", "none").attr("stroke", CONTOUR).attr("stroke-width", 2.2)
           .attr("stroke-dasharray", "6 4");
       }
     };
@@ -568,7 +582,7 @@ window.GW = (function () {
         .attr("r", function (d) { return d.mix === "alt" && altMany ? 3 : atomRadius(d.w); })
         .attr("fill", function (d) { return d.mix === "alt" ? W1 : W0; })
         .attr("fill-opacity", function (d) { return d.mix === "alt" && altMany ? 0.35 : 1; })
-        .attr("stroke", function (d) { return d.mix === "alt" && altMany ? "none" : INK; })
+        .attr("stroke", function (d) { return d.mix === "alt" && altMany ? "none" : OUTLINE; })
         .attr("stroke-width", 1.5)
         .style("cursor", "grab")
         .call(drag)
@@ -622,8 +636,8 @@ window.GW = (function () {
         var top = Math.max(10, maxr * 1.3, Math.exp(lc) * 1.05);
         scale.domain([1, top]);
         track.selectAll("line").data([0]).join("line").attr("x1", x0).attr("x2", x1).attr("y1", ly).attr("y2", ly)
-          .attr("stroke", "#bbb").attr("stroke-width", 4).attr("stroke-linecap", "round");
-        var tk = [{ v: Math.max(gmax, 1), t: "grid max", c: "#555", dy: 22 }, { v: maxr, t: "max r(c)", c: W0, dy: 38 }];
+          .attr("stroke", LINE).attr("stroke-width", 4).attr("stroke-linecap", "round");
+        var tk = [{ v: Math.max(gmax, 1), t: "grid max", c: MUTED, dy: 22 }, { v: maxr, t: "max r(c)", c: W0, dy: 38 }];
         ticks.selectAll("g").data(tk).join(function (e) {
           var g = e.append("g"); g.append("line"); g.append("text"); return g;
         }).each(function (d) {
@@ -660,15 +674,15 @@ window.GW = (function () {
     svg.append("text").attr("x", x(0.75)).attr("y", m.t + 26).attr("text-anchor", "middle").attr("font-size", 22)
       .attr("fill", INK).html("H<tspan font-size=\"15\" dy=\"5\">1</tspan>");
     svg.append("line").attr("x1", x(0)).attr("x2", x(1)).attr("y1", y(1)).attr("y2", y(1))
-      .attr("stroke", "#555").attr("stroke-dasharray", "2 4").attr("stroke-width", 1.5);
+      .attr("stroke", MUTED).attr("stroke-dasharray", "2 4").attr("stroke-width", 1.5);
     var axX = svg.append("g").attr("transform", "translate(0," + (H - m.b) + ")")
       .call(d3.axisBottom(x).tickValues([0, 0.25, 0.5, 0.75, 1]).tickFormat(function (v) { return v === 0.5 ? "1/2" : String(v); }));
     svg.append("g").attr("transform", "translate(" + m.l + ",0)")
       .call(d3.axisLeft(y).tickValues([0.01, 0.1, 1, 10, 100]).tickFormat(function (v) { return v < 1 ? "1/" + Math.round(1 / v) : String(v); }));
     svg.selectAll(".tick text").attr("font-size", 16);
     svg.append("text").attr("x", Wd - m.r).attr("y", H - m.b + 26).attr("text-anchor", "end")
-      .attr("font-size", 20).attr("font-style", "italic").text("θ");
-    svg.append("text").attr("x", m.l + 10).attr("y", m.t + 26).attr("font-size", 20).attr("font-style", "italic").text("g(θ)");
+      .attr("font-size", 20).attr("font-style", "italic").attr("fill", INK).text("θ");
+    svg.append("text").attr("x", m.l + 10).attr("y", m.t + 26).attr("font-size", 20).attr("font-style", "italic").attr("fill", INK).text("g(θ)");
     var curve = svg.append("g").attr("clip-path", "url(#" + clip + ")");
     var handles = svg.append("g");
 
@@ -711,7 +725,7 @@ window.GW = (function () {
           ? "M" + xv + "," + (hy - 12) + "l10,18h-20z"
           : d3.symbol(d3.symbolCircle, 260)())
           .attr("transform", d.key === "nu" ? "translate(" + xv + "," + hy + ")" : null)
-          .attr("fill", d.colour).attr("stroke", INK).attr("stroke-width", 1.5);
+          .attr("fill", d.colour).attr("stroke", OUTLINE).attr("stroke-width", 1.5);
         gg.select("text").attr("x", xv).attr("y", hy + 50).attr("text-anchor", "middle")
           .attr("font-size", 20).attr("font-style", "italic").attr("fill", d.colour)
           .text(d.label + " = " + d3.format(".2f")(st[d.key]));
@@ -741,15 +755,15 @@ window.GW = (function () {
       [[[t, 1 - t, 0], [t, 0, 1 - t]], [[1 - t, t, 0], [0, t, 1 - t]], [[1 - t, 0, t], [0, 1 - t, t]]].forEach(function (seg) {
         var a = toXY(seg[0]), b = toXY(seg[1]);
         grid.append("line").attr("x1", a[0]).attr("y1", a[1]).attr("x2", b[0]).attr("y2", b[1])
-          .attr("stroke", "#e4e4e4").attr("stroke-width", 1);
+          .attr("stroke", GRID).attr("stroke-width", 1);
       });
     });
-    svg.append("path").attr("d", SIMPLEX).attr("fill", "none").attr("stroke", "#555").attr("stroke-width", 1.6);
+    svg.append("path").attr("d", SIMPLEX).attr("fill", "none").attr("stroke", LINE).attr("stroke-width", 1.6);
     vertexLabels(svg.append("g"));
     var ptr = svg.append("g").attr("pointer-events", "none");
-    var dot = ptr.append("circle").attr("r", 9).attr("fill", W1).attr("stroke", INK).attr("stroke-width", 1.5);
+    var dot = ptr.append("circle").attr("r", 9).attr("fill", W1).attr("stroke", OUTLINE).attr("stroke-width", 1.5);
     var label = ptr.append("text").attr("font-size", 28).attr("fill", INK)
-      .attr("paint-order", "stroke").attr("stroke", "#fff").attr("stroke-width", 5).attr("stroke-linejoin", "round");
+      .attr("paint-order", "stroke").attr("stroke", BG).attr("stroke-width", 5).attr("stroke-linejoin", "round");
     var f = d3.format(".2f");
 
     function show(b) {
@@ -774,7 +788,7 @@ window.GW = (function () {
   // --- widget 6: playback of ripr fits -------------------------------------
   /* cfg: { fig, panel, scenarios: [{label, runs: [{title, trace}]}] }, each
    * trace in the slides/data/trace_<method>.json format. */
-  var RUN_COLOURS = ["#6a3d9a", "#1b9e77", "#222"];
+  var RUN_COLOURS = [themed("--gw-run1", "#6a3d9a"), themed("--gw-run2", "#1b9e77"), themed("--gw-run3", "#222")];
   function playback(cfg) {
     var fig = typeof cfg.fig === "string" ? document.getElementById(cfg.fig) : cfg.fig;
     fig.classList.add("gw", "gw-playback");
@@ -852,7 +866,7 @@ window.GW = (function () {
             .attr("transform", "translate(" + xv(last, its.length - 1) + "," + y(last.kl - r.trace.final.logU) + ")").attr("fill", col);
         }
         var i = indexAt(r.trace), cur = its[i];
-        chart.append("circle").attr("r", 5).attr("fill", col).attr("stroke", "#fff")
+        chart.append("circle").attr("r", 5).attr("fill", col).attr("stroke", BG)
           .attr("cx", xv(cur, i)).attr("cy", y(growth(cur)));
         chart.append("text").attr("x", 1100 - cm.r + 10).attr("y", cm.t + 18 + 20 * k).attr("font-size", 14).attr("fill", col).text(r.title);
       });
@@ -860,7 +874,7 @@ window.GW = (function () {
         .text("◆ bounded: KL − log U");
       var cx = sync === "iter" ? x(1 + pos * (iMax() - 1)) : x(pos * tr[1]);
       chart.append("line").attr("x1", cx).attr("x2", cx).attr("y1", cm.t).attr("y2", 200 - cm.b)
-        .attr("stroke", "#888").attr("stroke-dasharray", "3 3");
+        .attr("stroke", MUTED).attr("stroke-dasharray", "3 3");
     }
 
     function draw() {
@@ -872,7 +886,7 @@ window.GW = (function () {
         v.atoms.selectAll("circle").data(data).join("circle")
           .attr("cx", function (d) { return toXY(d.a)[0]; }).attr("cy", function (d) { return toXY(d.a)[1]; })
           .attr("r", function (d) { return d.mix === "alt" ? 7 : atomRadius(d.w); })
-          .attr("fill", function (d) { return d.mix === "alt" ? W1 : W0; }).attr("stroke", INK).attr("stroke-width", 1.5);
+          .attr("fill", function (d) { return d.mix === "alt" ? W1 : W0; }).attr("stroke", OUTLINE).attr("stroke-width", 1.5);
         v.marks.selectAll("text").data([0]).join("text").attr("x", 490).attr("y", 28).attr("text-anchor", "end")
           .attr("font-size", 22).attr("fill", MUTED)
           .text(it.atoms.length + (it.atoms.length === 1 ? " atom" : " atoms"));

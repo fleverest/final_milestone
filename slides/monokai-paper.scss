@@ -1,0 +1,67 @@
+/*-- scss:defaults --*/
+// Monokai accents on cream paper. The classic Monokai hues are darkened to
+// read on a light ground; the ink is Monokai's own background colour.
+// Accents are kept to three: purple titles, cyan links and citations, orange bold.
+$paper: #f6f1e7;
+$ink: #272822;
+$dim: #6f6a5c;
+$rule: #e2dccd;
+$mk-pink: #d6195f;
+$mk-cyan: #1a8fa8;
+$mk-orange: #c96a00;
+$mk-green: #5f8f00;
+$mk-purple: #7058be;
+
+$body-bg: $paper;
+$body-color: $ink;
+$link-color: $mk-cyan;
+$selection-bg: $rule;
+$presentation-heading-color: $mk-purple;
+$code-color: $mk-green;
+$code-block-bg: $rule;
+$code-bg: $rule;
+
+/*-- scss:rules --*/
+// Paper grain: fine fractal noise plus a faint large-scale mottle, drawn by
+// an inline SVG filter, so there is no image file to ship.
+.reveal-viewport {
+  background-color: $paper;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.30 0 0 0 0 0.20 0 0 0 0.09 0'/></filter><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='0.012' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.38 0 0 0 0 0.25 0 0 0 0.06 0'/></filter><rect width='100%' height='100%' filter='url(%23m)'/><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
+}
+.reveal strong { color: $mk-orange; }
+.reveal .slide-number, .reveal .slide-menu-button { color: $dim; }
+.reveal .progress { color: $mk-purple; }
+.reveal table th, .reveal table td { border-color: $rule; }
+
+// List spacing: a clear gap between top-level bullets, nested ones kept close.
+// (A blank line between bullets makes Pandoc wrap them in paragraphs, which
+// adds more space on top of this; leave bullets unseparated.)
+// Every top-level bullet, the first included (so the list clears the title),
+// gets --list-gap above it; nested bullets keep Quarto's 0.4em before the
+// first and 0.1em between the rest. The :nth-child(n) is a no-op that raises
+// specificity above Quarto's `.reveal .slide ul li`.
+// Per slide: ## Title {style="--list-gap: 1.4em"}
+.reveal .slide :is(ul, ol) > li:nth-child(n) { margin-top: var(--list-gap, 0.8em); }
+.reveal .slide li :is(ul, ol) > li:nth-child(n) { margin-top: 0.4em; }
+.reveal .slide li :is(ul, ol) > li + li:nth-child(n) { margin-top: 0.1em; }
+
+// Strike-through fragment: [old text]{.fragment .strikeout} draws a line through
+// the text from left to right instead of fading it in. (Not `.strike`: that is
+// a built-in reveal.js fragment which applies line-through instantly.) Pair it with
+// [new text]{.fragment .after-strike} on the same fragment-index to fade the
+// replacement in once the line has finished.
+.reveal .slides section .fragment.strikeout {
+  opacity: 1; visibility: inherit;
+  display: inline-block; position: relative;
+}
+.reveal .slides section .fragment.strikeout::after {
+  content: ""; position: absolute; left: -0.05em; right: -0.05em; top: 52%;
+  height: 0.08em; background: currentColor;
+  transform: scaleX(0); transform-origin: left center;
+  transition: transform 0.6s ease-in-out;
+}
+.reveal .slides section .fragment.strikeout.visible::after { transform: scaleX(1); }
+.reveal .slides section .fragment.after-strike.visible { transition-delay: 0.6s; }
+
+// Side note: [(e.g. original paper ballots)]{.side} -- smaller and grey.
+.reveal .side { font-size: 0.75em; color: $dim; margin-left: 0.3em; }

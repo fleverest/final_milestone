@@ -10,18 +10,16 @@
 
   function makeAnim(cv) {
     const d = cv.dataset;
-    const N = +(d.n || 25), T = +(d.t || 20), STEPS = +(d.steps || 400), ALPHA = +(d.alpha || 0.05), SEED = +(d.seed || 3);
-    const R = rng(SEED);
-    const gauss = () => { let u = 0; while (!u) u = R(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * R()); };
-    const dt = T / STEPS, sd = Math.sqrt(dt), P = [], S = [], A = [];
-    let vmin = 0, vmax = 0;
+    const N = +(d.n || 25), T = +(d.t || 100), ALPHA = +(d.alpha || 0.05), SEED = +(d.seed || 11);
+    // likelihood-ratio martingale: prod_i [p1^x (1-p1)^(1-x)] / [p0^x (1-p0)^(1-x)], x_i ~ Bernoulli(p)
+    const P0 = +(d.p0 || 0.5), P1 = +(d.p1 || 2 / 3), PT = +(d.ptrue || P1), LOG = d.log === 'true';
+    const STEPS = T, dt = 1, tr = LOG ? Math.log : (x => x);
+    const sim = (r, p) => { const y = [tr(1)]; let m = 1; for (let k = 1; k <= STEPS; k++) { m *= r() < p ? P1 / P0 : (1 - P1) / (1 - P0); y.push(tr(m)); } return y; };
+    const R = rng(SEED), P = [], S = [], A = [];
+    let vmin = tr(1), vmax = tr(1);
     for (let i = 0; i < N; i++) {
-      const p = [0]; let m = 0, am = 0;
-      for (let k = 1; k <= STEPS; k++) {
-        const x = p[k - 1] + sd * gauss(); p.push(x);
-        if (x > m) { m = x; am = k * dt; }
-        vmin = Math.min(vmin, x); vmax = Math.max(vmax, x);
-      }
+      const p = sim(R, P0); let m = p[0], am = 0;
+      p.forEach((x, k) => { if (x > m) { m = x; am = k; } vmin = Math.min(vmin, x); vmax = Math.max(vmax, x); });
       P.push(p); S.push(m); A.push(am);
     }
     { const pad = 0.06 * (vmax - vmin); vmin -= pad; vmax += pad; }
@@ -29,17 +27,11 @@
     const lo = SS[0] - 0.12 * span, hi = SS[N - 1] + 0.12 * span;
     const Q = SS[Math.ceil((1 - ALPHA) * N - 1e-9) - 1];
     const xs = v => X0 + (v - lo) / (hi - lo) * W;
-    // 'true' process with positive drift, stopped when it first reaches Q (data-drift overrides the default)
-    const MU = +(d.drift || 1.4 * Q / T);
+    // 'true' process simulated under p = ptrue, stopped at the first time it reaches Q
     let AP = null, HK = 0;
-    for (let s = 0; s < 500 && !AP; s++) {
-      const r2 = rng(SEED * 7919 + 17 + s);
-      const g2 = () => { let u = 0; while (!u) u = r2(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r2()); };
-      const p = [0];
-      for (let k = 1; k <= STEPS; k++) {
-        const x = p[k - 1] + MU * dt + sd * g2(); p.push(x);
-        if (x >= Q) { if (k >= 0.3 * STEPS && k <= 0.8 * STEPS && Math.min(...p) > vmin) { p[k] = Q; AP = p; HK = k; } break; }
-      }
+    for (let s = 0; s < 2000 && !AP; s++) {
+      const p = sim(rng(SEED * 7919 + 17 + s), PT), k = p.findIndex(x => x >= Q);
+      if (k >= 0.3 * STEPS && k <= 0.8 * STEPS && Math.min(...p.slice(0, k + 1)) > vmin) { AP = p.slice(0, k + 1); HK = k; }
     }
     // path schedule: first three slow, then ~20% faster each, floor 0.12 s
     const DUR = [], ST = [];
@@ -52,6 +44,8 @@
     const M = (t, v) => Rv(W / T * t, -lerp(H / (vmax - vmin), W / (hi - lo), U) * (v - lerp(vmin, lo, U)));
     const line = (a, b) => { ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); };
     const dot = (x, y, r, f) => { ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = f; ctx.fill(); };
+    // draw path p up to fractional index f; returns the end point
+    const trace = (p, f) => { const k = Math.min(Math.floor(f), p.length - 1); ctx.beginPath(); for (let j = 0; j <= k; j++) { const q = M(j * dt, p[j]); j ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); } let h = M(k * dt, p[k]); if (k < p.length - 1 && f > k) { h = M(f * dt, lerp(p[k], p[k + 1], f - k)); ctx.lineTo(h[0], h[1]); } ctx.stroke(); return h; };
 
     function draw() {
       const cs = getComputedStyle(cv), INK = cs.color;
@@ -74,11 +68,9 @@
       // processes
       ctx.lineWidth = 3; ctx.strokeStyle = GREY;
       for (let i = 0; i < N; i++) {
-        const g = pP(i), k = Math.floor(g * STEPS); if (k < 1 || fade <= 0) continue;
-        ctx.globalAlpha = 0.35 * fade * dim; ctx.beginPath();
-        for (let j = 0; j <= k; j++) { const q = M(j * dt, P[i][j]); j ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }
-        ctx.stroke(); ctx.globalAlpha = 1;
-        if (g < 1) { const q = M(k * dt, P[i][k]); dot(q[0], q[1], 5, GREY); }
+        const g = pP(i); if (g <= 0 || fade <= 0) continue;
+        ctx.globalAlpha = 0.35 * fade * dim; const h = trace(P[i], g * STEPS); ctx.globalAlpha = 1;
+        if (g < 1) dot(h[0], h[1], 5, GREY);
       }
       // dotted supremum lines
       if (fade > 0 && stage < 5) {
@@ -129,13 +121,11 @@
         }
       }
       if (AP && pN > 0) {
-        const k = Math.max(1, Math.floor(pN * HK));
-        ctx.strokeStyle = BLUE; ctx.lineWidth = 4; ctx.beginPath();
-        for (let j = 0; j <= k; j++) { const q = M(j * dt, AP[j]); j ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }
-        ctx.stroke();
-        if (pN < 1) { const h = M(k * dt, AP[k]); dot(h[0], h[1], 6, BLUE); }
+        ctx.strokeStyle = BLUE; ctx.lineWidth = 4;
+        const h = trace(AP, pN * HK);
+        if (pN < 1) dot(h[0], h[1], 6, BLUE);
         if (pHit > 0) {
-          const hp = M(HK * dt, Q);
+          const hp = M(HK * dt, AP[HK]);
           ctx.globalAlpha = pMsg; ctx.setLineDash([0.1, 9]); ctx.lineWidth = 3; ctx.strokeStyle = INK;
           line(hp, [hp[0], Y0]); ctx.setLineDash([]);
           ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.fillText('τ', hp[0], Y0 + 52);
