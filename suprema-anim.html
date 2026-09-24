@@ -1,172 +1,402 @@
 <script>
-(function () {
-  const LW = 1664, LH = 776, X0 = 110, Y0 = 680, W = 1500, H = 610, HP = 0.9 * H;
-  const GREY = '#5f6670', BLUE = '#2b4c7e', RED = '#c0392b', FS = 38;
-  const clamp = x => x < 0 ? 0 : x > 1 ? 1 : x, lerp = (a, b, u) => a + (b - a) * u;
-  const io = u => u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
-  const back = u => { const c = 1.70158; return 1 + (c + 1) * Math.pow(u - 1, 3) + c * Math.pow(u - 1, 2); };
-  const pr = (e, s, d) => clamp((e - s) / d);
-  const rng = a => () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  (function () {
+    const LW = 1664, LH = 776, X0 = 110, Y0 = 680, W = 1500, H = 610, HP = 0.9 * H;
+    const GREY = '#5f6670', BLUE = '#2b4c7e', RED = '#c0392b', FS = 38;
+    const clamp = x => x < 0 ? 0 : x > 1 ? 1 : x, lerp = (a, b, u) => a + (b - a) * u;
+    const io = u => u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+    const back = u => { const c = 1.70158; return 1 + (c + 1) * Math.pow(u - 1, 3) + c * Math.pow(u - 1, 2); };
+    const pr = (e, s, d) => clamp((e - s) / d);
+    const rng = a => () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 
-  function makeAnim(cv) {
-    const d = cv.dataset;
-    const N = +(d.n || 25), T = +(d.t || 100), ALPHA = +(d.alpha || 0.05), SEED = +(d.seed || 11);
-    // likelihood-ratio martingale: prod_i [p1^x (1-p1)^(1-x)] / [p0^x (1-p0)^(1-x)], x_i ~ Bernoulli(p)
-    const P0 = +(d.p0 || 0.5), P1 = +(d.p1 || 2 / 3), PT = +(d.ptrue || P1), LOG = d.log === 'true';
-    const STEPS = T, dt = 1, tr = LOG ? Math.log : (x => x);
-    const sim = (r, p) => { const y = [tr(1)]; let m = 1; for (let k = 1; k <= STEPS; k++) { m *= r() < p ? P1 / P0 : (1 - P1) / (1 - P0); y.push(tr(m)); } return y; };
-    const R = rng(SEED), P = [], S = [], A = [];
-    let vmin = tr(1), vmax = tr(1);
-    for (let i = 0; i < N; i++) {
-      const p = sim(R, P0); let m = p[0], am = 0;
-      p.forEach((x, k) => { if (x > m) { m = x; am = k; } vmin = Math.min(vmin, x); vmax = Math.max(vmax, x); });
-      P.push(p); S.push(m); A.push(am);
+    // ---- Statistics -------------------------------------------------------------------------------
+    // data-stat="bf": categorical draws with probabilities theta = (theta1, theta2, theta3); Bayes factor for
+    //   H1: theta1 is the strict plurality winner vs H0: it is not, with a Dirichlet(1,1,1) prior restricted to
+    //   each hypothesis. With counts n the posterior is Dirichlet(n + 1), and since P(H1) = 1/3,
+    //   BF = [P(H1 | x) / (1/3)] / [P(H0 | x) / (2/3)] = 2 P(H1 | x) / P(H0 | x).
+    // otherwise ("lr"): Bernoulli likelihood ratio, p1 = data-p1 over p0 = data-p0.
+    // P(theta1 is NOT the largest) under Dirichlet(a1, a2, a3) with integer a's, via independent gammas:
+    // P(G2 > G1) + P(G3 > G1) - P(G2 > G1, G3 > G1), each an exact finite sum.
+    function notMax(a1, a2, a3) {
+      const one = a => { let t = Math.pow(2, -a1), s = 0; for (let k = 0; k < a; k++) { s += t; t *= (a1 + k) / (2 * (k + 1)); } return s; };
+      let both = 0, row = Math.pow(3, -a1);
+      for (let j = 0; j < a2; j++) {
+        let t = row;
+        for (let k = 0; k < a3; k++) { both += t; t *= (a1 + j + k) / (3 * (k + 1)); }
+        row *= (a1 + j) / (3 * (j + 1));
+      }
+      return one(a2) + one(a3) - both;
     }
-    { const pad = 0.06 * (vmax - vmin); vmin -= pad; vmax += pad; }
-    const SS = [...S].sort((a, b) => a - b), span = SS[N - 1] - SS[0] || 1;
-    const lo = SS[0] - 0.12 * span, hi = SS[N - 1] + 0.12 * span;
-    const Q = SS[Math.ceil((1 - ALPHA) * N - 1e-9) - 1];
-    const xs = v => X0 + (v - lo) / (hi - lo) * W;
-    // 'true' process simulated under p = ptrue, stopped at the first time it reaches Q
-    let AP = null, HK = 0;
-    for (let s = 0; s < 2000 && !AP; s++) {
-      const p = sim(rng(SEED * 7919 + 17 + s), PT), k = p.findIndex(x => x >= Q);
-      if (k >= 0.3 * STEPS && k <= 0.8 * STEPS && Math.min(...p.slice(0, k + 1)) > vmin) { AP = p.slice(0, k + 1); HK = k; }
+    const BFC = new Map();
+    const bf = (a, b, c) => { const key = (a * 1024 + b) * 1024 + c; let v = BFC.get(key); if (v === undefined) { const q = notMax(a + 1, b + 1, c + 1); v = 2 * (1 - q) / q; BFC.set(key, v); } return v; };
+    function model(d) {
+      const T = +(d.t || 100), tr = d.log === 'true' ? Math.log : (x => x);
+      if (d.stat === 'bf') {
+        const vec = str => str.split(',').map(Number);
+        const path = (r, th) => { let a = 0, b = 0, c = 0; const y = [tr(1)]; for (let k = 1; k <= T; k++) { const u = r(); if (u < th[0]) a++; else if (u < th[0] + th[1]) b++; else c++; y.push(tr(bf(a, b, c))); } return y; };
+        return {
+          kind: 'bf', T, path, nullGen: vec(d.null || '0.5,0.5,0'), trueGen: vec(d.true || '0.45,0.35,0.2'),
+          gens: (d.thetas || '0.3333333,0.3333333,0.3333334;0.25,0.3333333,0.4166667').split(';').map(vec)
+        };
+      }
+      const P0 = +(d.p0 || 0.5), P1 = +(d.p1 || 2 / 3);
+      const path = (r, p) => { const y = [tr(1)]; let m = 1; for (let k = 1; k <= T; k++) { m *= r() < p ? P1 / P0 : (1 - P1) / (1 - P0); y.push(tr(m)); } return y; };
+      return { kind: 'lr', T, path, nullGen: P0, trueGen: +(d.ptrue || P1), gens: (d.ps || '0.25,0.3333333').split(',').map(Number) };
     }
-    // path schedule: first three slow, then ~20% faster each, floor 0.12 s
-    const DUR = [], ST = [];
-    { let t = 0.3; for (let i = 0; i < N; i++) { const dd = 0.12 + 0.63 * Math.pow(0.8, Math.max(0, i - 2)); DUR.push(dd); ST.push(t); t += dd; } }
-    const END = [0, ST[N - 1] + DUR[N - 1] + 0.1, 0.85 + N * 0.1, 4.4, 1.2, 3.4, 3.4];
 
-    const ctx = cv.getContext('2d');
-    let K = 1, U = 0, stage = 0, e = Infinity, t0 = null, raf = 0;
-    const Rv = (px, py) => { const th = U * Math.PI / 2, c = Math.cos(th), s = Math.sin(th); return [X0 + px * c - py * s, Y0 + px * s + py * c]; };
-    const M = (t, v) => Rv(W / T * t, -lerp(H / (vmax - vmin), W / (hi - lo), U) * (v - lerp(vmin, lo, U)));
-    const line = (a, b) => { ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); };
-    const dot = (x, y, r, f) => { ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = f; ctx.fill(); };
-    // draw path p up to fractional index f; returns the end point
-    const trace = (p, f) => { const k = Math.min(Math.floor(f), p.length - 1); ctx.beginPath(); for (let j = 0; j <= k; j++) { const q = M(j * dt, p[j]); j ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); } let h = M(k * dt, p[k]); if (k < p.length - 1 && f > k) { h = M(f * dt, lerp(p[k], p[k + 1], f - k)); ctx.lineTo(h[0], h[1]); } ctx.stroke(); return h; };
-
-    function draw() {
-      const cs = getComputedStyle(cv), INK = cs.color;
-      const st = (k, f) => stage > k ? 1 : stage < k ? 0 : f();
-      const pP = i => st(1, () => pr(e, ST[i], DUR[i]));
-      const pS = i => st(2, () => io(pr(e, 0.3 + i * 0.1, 0.5)));
-      const pD = i => st(2, () => back(pr(e, 0.75 + i * 0.1, 0.25)));
-      // stage 5: fade ECDF/suprema, rotate back, draw quantile as a horizontal threshold
-      const out5 = st(5, () => io(pr(e, 0, 0.4))), shrink = st(5, () => io(pr(e, 0, 0.5)));
-      const rb = st(5, () => io(pr(e, 0.5, 1.8))), pH = st(5, () => io(pr(e, 2.4, 0.8)));
-      U = st(3, () => io(pr(e, 0.4, 1.8))) - rb;
-      // stage 6: drifting process, stopped at the threshold
-      const dim = 1 - 0.4 * st(6, () => io(pr(e, 0, 0.4)));
-      const pN = st(6, () => pr(e, 0.3, 2.4)), pHit = st(6, () => back(pr(e, 2.7, 0.3))), pMsg = st(6, () => io(pr(e, 2.8, 0.4)));
-      const pA = st(3, () => io(pr(e, 2.3, 0.5))), pE = st(3, () => io(pr(e, 2.7, 1.6))), pQ = st(4, () => io(pr(e, 0.3, 0.8)));
-      const fade = 1 - io(clamp(U * 1.5)), lf = 1 - clamp(U * 4);
-      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
-      ctx.setTransform(K, 0, 0, K, 0, 0);
-      ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.font = FS + 'px ' + cs.fontFamily;
-      // processes
-      ctx.lineWidth = 3; ctx.strokeStyle = GREY;
+    function makeAnim(cv) {
+      const d = cv.dataset;
+      const mdl = model(d), T = mdl.T, STEPS = T, dt = 1;
+      const N = +(d.n || 25), ALPHA = +(d.alpha || 0.05), SEED = +(d.seed || 11);
+      const R = rng(SEED), P = [], S = [], A = [];
+      let vmin = Infinity, vmax = -Infinity;
       for (let i = 0; i < N; i++) {
-        const g = pP(i); if (g <= 0 || fade <= 0) continue;
-        ctx.globalAlpha = 0.35 * fade * dim; const h = trace(P[i], g * STEPS); ctx.globalAlpha = 1;
-        if (g < 1) dot(h[0], h[1], 5, GREY);
+        const p = mdl.path(R, mdl.nullGen); let m = p[0], am = 0;
+        p.forEach((x, k) => { if (x > m) { m = x; am = k; } vmin = Math.min(vmin, x); vmax = Math.max(vmax, x); });
+        P.push(p); S.push(m); A.push(am);
       }
-      // dotted supremum lines
-      if (fade > 0 && stage < 5) {
-        ctx.setLineDash([0.1, 9]); ctx.lineWidth = 4; ctx.strokeStyle = INK; ctx.globalAlpha = 0.7 * fade;
-        for (let i = 0; i < N; i++) { const g = pS(i); if (g > 0) line(M(A[i], S[i]), M(A[i] * (1 - g), S[i])); }
-        ctx.setLineDash([]); ctx.globalAlpha = 1;
+      { const pad = 0.06 * (vmax - vmin); vmin -= pad; vmax += pad; }
+      const SS = [...S].sort((a, b) => a - b), span = SS[N - 1] - SS[0] || 1;
+      const lo = SS[0] - 0.12 * span, hi = SS[N - 1] + 0.12 * span;
+      const Q = SS[Math.ceil((1 - ALPHA) * N - 1e-9) - 1];
+      const xs = v => X0 + (v - lo) / (hi - lo) * W;
+      // 'true' process simulated under the alternative (data-true / data-ptrue), stopped when it first reaches Q
+      let AP = null, HK = 0;
+      for (let s = 0; s < 2000 && !AP; s++) {
+        const p = mdl.path(rng(SEED * 7919 + 17 + s), mdl.trueGen), k = p.findIndex(x => x >= Q);
+        if (k >= 0.3 * STEPS && k <= 0.8 * STEPS && Math.min(...p.slice(0, k + 1)) > vmin) { AP = p.slice(0, k + 1); HK = k; }
       }
-      // axes
-      ctx.strokeStyle = INK; ctx.fillStyle = INK; ctx.lineWidth = 2.5;
-      if (fade > 0) { ctx.globalAlpha = fade; line(Rv(0, 0), Rv(W, 0)); line(Rv(W, 0), Rv(W, 12)); line(Rv(0, 0), Rv(0, 12)); }
-      if (lf > 0) { ctx.globalAlpha = lf; ctx.textAlign = 'center'; ctx.fillText('0', X0, Y0 + 52); ctx.fillText('T', X0 + W, Y0 + 52); }
-      ctx.globalAlpha = 1;
-      line(Rv(0, 0), Rv(0, -lerp(H, W, U)));
-      // ECDF axis
-      if (pA > 0) {
-        ctx.globalAlpha = pA * (1 - out5); line([X0, Y0], [X0, Y0 - H]); line([X0 - 12, Y0 - HP], [X0, Y0 - HP]); line([X0 - 12, Y0], [X0, Y0]);
-        ctx.textAlign = 'right'; ctx.fillText('1', X0 - 22, Y0 - HP + 13); ctx.fillText('0', X0 - 22, Y0 + 13); ctx.globalAlpha = 1;
-      }
-      // ECDF
-      if (pE > 0 && out5 < 1) {
-        ctx.save(); ctx.globalAlpha = 1 - out5; ctx.beginPath(); ctx.rect(0, 0, X0 + pE * W + 2, LH); ctx.clip();
-        ctx.strokeStyle = BLUE; ctx.lineWidth = 4; ctx.lineJoin = 'miter'; ctx.lineCap = 'butt';
-        ctx.beginPath(); ctx.moveTo(X0, Y0);
-        for (let i = 0; i < N; i++) { const x = xs(SS[i]); ctx.lineTo(x, Y0 - i / N * HP); ctx.lineTo(x, Y0 - (i + 1) / N * HP); }
-        ctx.lineTo(X0 + W, Y0 - HP); ctx.stroke();
-        for (let i = 0; i < N; i++) dot(xs(SS[i]), Y0 - (i + 1) / N * HP, 7, BLUE);
-        ctx.restore();
-      }
-      // supremum dots
-      for (let i = 0; i < N; i++) { const r = 7 * pD(i); if (r > 0 && out5 < 1) { const q = M(0, S[i]); ctx.globalAlpha = 1 - out5; dot(q[0], q[1], r, INK); ctx.globalAlpha = 1; } }
-      // quantile
-      if (pQ > 0) {
-        const x = xs(Q);
-        ctx.setLineDash([0.1, 10]); ctx.lineCap = 'round'; ctx.strokeStyle = RED; ctx.lineWidth = 5;
-        if (shrink < 1) line([x, Y0], [x, Y0 - pQ * H * (1 - shrink)]); ctx.setLineDash([]);
-        ctx.globalAlpha = clamp((pQ - 0.6) / 0.4) * (1 - out5); ctx.fillStyle = RED; ctx.textAlign = 'right';
-        ctx.fillText('1 − α quantile', x - 18, Y0 - H + 30); ctx.globalAlpha = 1;
-      }
-      // quantile as a threshold on the original axes
-      if (stage >= 5) {
-        const a = M(0, Q); dot(a[0], a[1], 8 * shrink, RED);
-        if (pH > 0) {
-          const b = M(pH * T, Q);
-          ctx.setLineDash([0.1, 10]); ctx.lineCap = 'round'; ctx.strokeStyle = RED; ctx.lineWidth = 5;
-          line(a, b); ctx.setLineDash([]);
-          const c = M(T, Q); ctx.globalAlpha = pH; ctx.fillStyle = RED; ctx.textAlign = 'right';
-          ctx.fillText('1 − α quantile', c[0], c[1] - 20); ctx.globalAlpha = 1;
-        }
-      }
-      if (AP && pN > 0) {
-        ctx.strokeStyle = BLUE; ctx.lineWidth = 4;
-        const h = trace(AP, pN * HK);
-        if (pN < 1) dot(h[0], h[1], 6, BLUE);
-        if (pHit > 0) {
-          const hp = M(HK * dt, AP[HK]);
-          ctx.globalAlpha = pMsg; ctx.setLineDash([0.1, 9]); ctx.lineWidth = 3; ctx.strokeStyle = INK;
-          line(hp, [hp[0], Y0]); ctx.setLineDash([]);
-          ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.fillText('τ', hp[0], Y0 + 52);
-          ctx.globalAlpha = 1; dot(hp[0], hp[1], 10 * pHit, RED);
-          ctx.globalAlpha = pMsg; ctx.fillStyle = RED; ctx.textAlign = 'right';
-          ctx.font = 'bold ' + FS + 'px ' + cs.fontFamily; ctx.fillText('reject H₀', hp[0] - 20, hp[1] - 24);
-          ctx.font = FS + 'px ' + cs.fontFamily; ctx.globalAlpha = 1;
-        }
-      }
-    }
-    function resize() {
-      const w = cv.offsetWidth; if (!w) return;
-      const s = (window.devicePixelRatio || 1) * (window.Reveal && Reveal.getScale ? Reveal.getScale() : 1);
-      cv.width = Math.round(w * s); cv.height = Math.round(w * LH / LW * s); K = cv.width / LW; draw();
-    }
-    function loop(now) {
-      if (t0 === null) t0 = now;
-      e = (now - t0) / 1000; draw();
-      if (e < END[stage]) raf = requestAnimationFrame(loop);
-    }
-    return {
-      animate(k) { cancelAnimationFrame(raf); stage = k; e = 0; t0 = null; resize(); raf = requestAnimationFrame(loop); },
-      snap(k) { cancelAnimationFrame(raf); stage = k; e = Infinity; resize(); },
-      resize
-    };
-  }
+      // path schedule: first three slow, then ~20% faster each, floor 0.12 s
+      const DUR = [], ST = [];
+      { let t = 0.3; for (let i = 0; i < N; i++) { const dd = 0.12 + 0.63 * Math.pow(0.8, Math.max(0, i - 2)); DUR.push(dd); ST.push(t); t += dd; } }
+      const END = [0, ST[N - 1] + DUR[N - 1] + 0.1, 0.85 + N * 0.1, 4.4, 1.2, 3.4, 3.4];
 
-  function init() {
-    const anims = new Map();
-    document.querySelectorAll('canvas.suprema').forEach(cv => anims.set(cv, makeAnim(cv)));
-    const stageOf = slide => slide.querySelectorAll('.fragment.suprema-step.visible').length;
-    const each = (slide, f) => slide && slide.querySelectorAll('canvas.suprema').forEach(cv => f(anims.get(cv), stageOf(slide)));
-    Reveal.on('fragmentshown', ev => { if (ev.fragment.classList.contains('suprema-step')) each(ev.fragment.closest('section'), (a, k) => a.animate(k)); });
-    Reveal.on('fragmenthidden', ev => { if (ev.fragment.classList.contains('suprema-step')) each(ev.fragment.closest('section'), (a, k) => a.snap(k)); });
-    Reveal.on('slidechanged', ev => each(ev.currentSlide, (a, k) => a.snap(k)));
-    Reveal.on('resize', () => anims.forEach(a => a.resize()));
-    anims.forEach((a, cv) => a.snap(stageOf(cv.closest('section'))));
-  }
-  (function boot() {
-    if (!window.Reveal || !Reveal.on) return setTimeout(boot, 50);
-    if (Reveal.isReady && Reveal.isReady()) init(); else Reveal.on('ready', init);
+      const ctx = cv.getContext('2d');
+      let K = 1, U = 0, stage = 0, e = Infinity, t0 = null, raf = 0;
+      const Rv = (px, py) => { const th = U * Math.PI / 2, c = Math.cos(th), s = Math.sin(th); return [X0 + px * c - py * s, Y0 + px * s + py * c]; };
+      const M = (t, v) => Rv(W / T * t, -lerp(H / (vmax - vmin), W / (hi - lo), U) * (v - lerp(vmin, lo, U)));
+      const line = (a, b) => { ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); };
+      const dot = (x, y, r, f) => { ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = f; ctx.fill(); };
+      // draw path p up to fractional index f; returns the end point
+      const trace = (p, f) => { const k = Math.min(Math.floor(f), p.length - 1); ctx.beginPath(); for (let j = 0; j <= k; j++) { const q = M(j * dt, p[j]); j ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); } let h = M(k * dt, p[k]); if (k < p.length - 1 && f > k) { h = M(f * dt, lerp(p[k], p[k + 1], f - k)); ctx.lineTo(h[0], h[1]); } ctx.stroke(); return h; };
+
+      function draw() {
+        const cs = getComputedStyle(cv), INK = cs.color;
+        const st = (k, f) => stage > k ? 1 : stage < k ? 0 : f();
+        const pP = i => st(1, () => pr(e, ST[i], DUR[i]));
+        const pS = i => st(2, () => io(pr(e, 0.3 + i * 0.1, 0.5)));
+        const pD = i => st(2, () => back(pr(e, 0.75 + i * 0.1, 0.25)));
+        // stage 5: fade ECDF/suprema, rotate back, draw quantile as a horizontal threshold
+        const out5 = st(5, () => io(pr(e, 0, 0.4))), shrink = st(5, () => io(pr(e, 0, 0.5)));
+        const rb = st(5, () => io(pr(e, 0.5, 1.8))), pH = st(5, () => io(pr(e, 2.4, 0.8)));
+        U = st(3, () => io(pr(e, 0.4, 1.8))) - rb;
+        // stage 6: drifting process, stopped at the threshold
+        const dim = 1 - 0.4 * st(6, () => io(pr(e, 0, 0.4)));
+        const pN = st(6, () => pr(e, 0.3, 2.4)), pHit = st(6, () => back(pr(e, 2.7, 0.3))), pMsg = st(6, () => io(pr(e, 2.8, 0.4)));
+        const pA = st(3, () => io(pr(e, 2.3, 0.5))), pE = st(3, () => io(pr(e, 2.7, 1.6))), pQ = st(4, () => io(pr(e, 0.3, 0.8)));
+        const fade = 1 - io(clamp(U * 1.5)), lf = 1 - clamp(U * 4);
+        ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
+        ctx.setTransform(K, 0, 0, K, 0, 0);
+        ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.font = FS + 'px ' + cs.fontFamily;
+        // processes
+        ctx.lineWidth = 3; ctx.strokeStyle = GREY;
+        for (let i = 0; i < N; i++) {
+          const g = pP(i); if (g <= 0 || fade <= 0) continue;
+          ctx.globalAlpha = 0.35 * fade * dim; const h = trace(P[i], g * STEPS); ctx.globalAlpha = 1;
+          if (g < 1) dot(h[0], h[1], 5, GREY);
+        }
+        // dotted supremum lines
+        if (fade > 0 && stage < 5) {
+          ctx.setLineDash([0.1, 9]); ctx.lineWidth = 4; ctx.strokeStyle = INK; ctx.globalAlpha = 0.7 * fade;
+          for (let i = 0; i < N; i++) { const g = pS(i); if (g > 0) line(M(A[i], S[i]), M(A[i] * (1 - g), S[i])); }
+          ctx.setLineDash([]); ctx.globalAlpha = 1;
+        }
+        // axes
+        ctx.strokeStyle = INK; ctx.fillStyle = INK; ctx.lineWidth = 2.5;
+        if (fade > 0) { ctx.globalAlpha = fade; line(Rv(0, 0), Rv(W, 0)); line(Rv(W, 12), Rv(W, -lerp(H, W, U)));  /* solid line at t = T */ line(Rv(0, 0), Rv(0, 12)); }
+        if (lf > 0) { ctx.globalAlpha = lf; ctx.textAlign = 'center'; ctx.fillText('0', X0, Y0 + 52); ctx.fillText('T', X0 + W, Y0 + 52); }
+        ctx.globalAlpha = 1;
+        line(Rv(0, 0), Rv(0, -lerp(H, W, U)));
+        // ECDF axis
+        if (pA > 0) {
+          ctx.globalAlpha = pA * (1 - out5); line([X0, Y0], [X0, Y0 - H]); line([X0 - 12, Y0 - HP], [X0, Y0 - HP]); line([X0 - 12, Y0], [X0, Y0]);
+          ctx.textAlign = 'right'; ctx.fillText('1', X0 - 22, Y0 - HP + 13); ctx.fillText('0', X0 - 22, Y0 + 13); ctx.globalAlpha = 1;
+        }
+        // ECDF
+        if (pE > 0 && out5 < 1) {
+          ctx.save(); ctx.globalAlpha = 1 - out5; ctx.beginPath(); ctx.rect(0, 0, X0 + pE * W + 2, LH); ctx.clip();
+          ctx.strokeStyle = BLUE; ctx.lineWidth = 4; ctx.lineJoin = 'miter'; ctx.lineCap = 'butt';
+          ctx.beginPath(); ctx.moveTo(X0, Y0);
+          for (let i = 0; i < N; i++) { const x = xs(SS[i]); ctx.lineTo(x, Y0 - i / N * HP); ctx.lineTo(x, Y0 - (i + 1) / N * HP); }
+          ctx.lineTo(X0 + W, Y0 - HP); ctx.stroke();
+          for (let i = 0; i < N; i++) dot(xs(SS[i]), Y0 - (i + 1) / N * HP, 7, BLUE);
+          ctx.restore();
+        }
+        // supremum dots
+        for (let i = 0; i < N; i++) { const r = 7 * pD(i); if (r > 0 && out5 < 1) { const q = M(0, S[i]); ctx.globalAlpha = 1 - out5; dot(q[0], q[1], r, INK); ctx.globalAlpha = 1; } }
+        // quantile
+        if (pQ > 0) {
+          const x = xs(Q);
+          ctx.setLineDash([0.1, 10]); ctx.lineCap = 'round'; ctx.strokeStyle = RED; ctx.lineWidth = 5;
+          if (shrink < 1) line([x, Y0], [x, Y0 - pQ * H * (1 - shrink)]); ctx.setLineDash([]);
+          ctx.globalAlpha = clamp((pQ - 0.6) / 0.4) * (1 - out5); ctx.fillStyle = RED; ctx.textAlign = 'right';
+          ctx.fillText('1 − α quantile', x - 18, Y0 - H + 30); ctx.globalAlpha = 1;
+        }
+        // quantile as a threshold on the original axes
+        if (stage >= 5) {
+          const a = M(0, Q); dot(a[0], a[1], 8 * shrink, RED);
+          if (pH > 0) {
+            const b = M(pH * T, Q);
+            ctx.setLineDash([0.1, 10]); ctx.lineCap = 'round'; ctx.strokeStyle = RED; ctx.lineWidth = 5;
+            line(a, b); ctx.setLineDash([]);
+            const c = M(T, Q); ctx.globalAlpha = pH; ctx.fillStyle = RED; ctx.textAlign = 'right';
+            ctx.fillText('1 − α quantile', c[0], c[1] - 20); ctx.globalAlpha = 1;
+          }
+        }
+        if (AP && pN > 0) {
+          ctx.strokeStyle = BLUE; ctx.lineWidth = 4;
+          const h = trace(AP, pN * HK);
+          if (pN < 1) dot(h[0], h[1], 6, BLUE);
+          if (pHit > 0) {
+            const hp = M(HK * dt, AP[HK]);
+            ctx.globalAlpha = pMsg; ctx.setLineDash([0.1, 9]); ctx.lineWidth = 3; ctx.strokeStyle = INK;
+            line(hp, [hp[0], Y0]); ctx.setLineDash([]);
+            ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.fillText('τ', hp[0], Y0 + 52);
+            ctx.globalAlpha = 1; dot(hp[0], hp[1], 10 * pHit, RED);
+            ctx.globalAlpha = pMsg; ctx.fillStyle = RED; ctx.textAlign = 'right';
+            ctx.font = 'bold ' + FS + 'px ' + cs.fontFamily; ctx.fillText('reject H₀', hp[0] - 20, hp[1] - 24);
+            ctx.font = FS + 'px ' + cs.fontFamily; ctx.globalAlpha = 1;
+          }
+        }
+      }
+      function resize() {
+        const w = cv.offsetWidth; if (!w) return;
+        const s = (window.devicePixelRatio || 1) * (window.Reveal && Reveal.getScale ? Reveal.getScale() : 1);
+        cv.width = Math.round(w * s); cv.height = Math.round(w * LH / LW * s); K = cv.width / LW; draw();
+      }
+      function loop(now) {
+        if (t0 === null) t0 = now;
+        e = (now - t0) / 1000; draw();
+        if (e < END[stage]) raf = requestAnimationFrame(loop);
+      }
+      return {
+        animate(k) { cancelAnimationFrame(raf); stage = k; e = 0; t0 = null; resize(); raf = requestAnimationFrame(loop); },
+        snap(k) { cancelAnimationFrame(raf); stage = k; e = Infinity; resize(); },
+        resize
+      };
+    }
+
+    // Second animation: how the ECDF of the suprema and its 1 - alpha quantile depend on the data-generating
+    // distribution. Starts from the ECDF of the same 25 suprema as the first animation (same data-n / data-t /
+    // data-seed / data-stat / data-null), then draws a fresh, larger sample (data-m) for each distribution in
+    // data-thetas (bf) or data-ps (lr), and finally re-highlights the original. With data-stat="bf" the left half
+    // shows a ternary diagram with a cursor picking each theta.
+    function makeDGP(cv) {
+      const d = cv.dataset, mdl = model(d), TERN = mdl.kind === 'bf';
+      const N = +(d.n || 25), ALPHA = +(d.alpha || 0.05), SEED = +(d.seed || 11), MN = +(d.m || 200);
+      const GENS = [mdl.nullGen].concat(mdl.gens), NS = mdl.gens.length;
+      const sup = (r, g) => Math.max(...mdl.path(r, g));
+      const quant = v => v[Math.ceil((1 - ALPHA) * v.length - 1e-9) - 1];
+      const R = rng(SEED), S0 = [];
+      for (let i = 0; i < N; i++) S0.push(sup(R, mdl.nullGen));
+      S0.sort((a, b) => a - b);
+      const span = S0[N - 1] - S0[0] || 1, lo = S0[0] - 0.12 * span, hi = S0[N - 1] + 0.12 * span;
+      // ECDF panel: right half when the ternary is shown, full width otherwise
+      const PX = TERN ? 910 : X0, PW = TERN ? 710 : W;
+      const xs = v => PX + (v - lo) / (hi - lo) * PW;
+      const sets = [S0].concat(mdl.gens.map((g, j) => { const r = rng(SEED * 104729 + 31 * j + 7), v = []; for (let i = 0; i < MN; i++) v.push(sup(r, g)); return v.sort((a, b) => a - b); }));
+      const Qs = sets.map(quant);
+      const END = [0].concat(mdl.gens.map(() => 3.3), [1.8]);
+      // ternary geometry: theta1 top, theta2 bottom-left, theta3 bottom-right
+      const V = [[450, 106], [130, 660], [770, 660]];
+      const bary = th => [0, 1].map(c => th[0] * V[0][c] + th[1] * V[1][c] + th[2] * V[2][c]);
+
+      const ctx = cv.getContext('2d');
+      let K = 1, stage = 0, e = Infinity, t0 = null, raf = 0;
+      const line = (a, b) => { ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); };
+      const dot = (x, y, r, f) => { ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = f; ctx.fill(); };
+
+      function draw() {
+        const cs = getComputedStyle(cv), INK = cs.color, F = FS + 'px ' + cs.fontFamily, FI = 'italic ' + F;
+        const fadeOut = io(pr(e, 0, 0.5)), fadeIn = io(pr(e, 0.3, 0.8)), FAINT = 0.2;
+        // per-distribution opacity, ECDF sweep, quantile line and ternary-dot progress
+        const alpha = i => {
+          if (i === 0) return stage === 0 ? 1 : stage === 1 ? lerp(1, FAINT, fadeOut) : stage <= NS ? FAINT : lerp(FAINT, 1, fadeIn);
+          return stage < i ? 0 : stage === i ? 1 : stage === i + 1 ? lerp(1, FAINT, fadeOut) : FAINT;
+        };
+        const sweep = i => i === 0 || stage > i ? 1 : stage < i ? 0 : io(pr(e, 0.6, 1.6));
+        const qline = i => i === 0 || stage > i ? 1 : stage < i ? 0 : io(pr(e, 2.4, 0.8));
+        const pop = i => i === 0 || stage > i ? 1 : stage < i ? 0 : back(pr(e, 0.6, 0.25));
+        ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
+        ctx.setTransform(K, 0, 0, K, 0, 0); ctx.font = F; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+        // ---- left: ternary diagram ----
+        if (TERN) {
+          const G = bary([1 / 3, 1 / 3, 1 / 3]), M12 = bary([0.5, 0.5, 0]), M13 = bary([0.5, 0, 0.5]);
+          ctx.beginPath();[V[1], M12, G, M13, V[2]].forEach((p, k) => k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath();
+          ctx.fillStyle = GREY; ctx.globalAlpha = 0.18; ctx.fill(); ctx.globalAlpha = 1;
+          ctx.strokeStyle = INK; ctx.lineWidth = 2.5;
+          ctx.beginPath(); V.forEach((p, k) => k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); ctx.stroke();
+          ctx.lineWidth = 3.5; line(M12, G); line(G, M13);
+          ctx.fillStyle = INK; ctx.font = FI; ctx.textAlign = 'center';
+          ctx.fillText('\u03b8\u2081', V[0][0], V[0][1] - 20);
+          ctx.textAlign = 'right'; ctx.fillText('\u03b8\u2082', V[1][0] - 8, V[1][1] + 44);
+          ctx.textAlign = 'left'; ctx.fillText('\u03b8\u2083', V[2][0] + 8, V[2][1] + 44);
+          ctx.textAlign = 'center';
+          const h1 = bary([0.52, 0.24, 0.24]), h0 = bary([0.16, 0.42, 0.42]);
+          ctx.fillText('H\u2081', h1[0], h1[1] + 12); ctx.fillText('H\u2080', h0[0], h0[1] + 12);
+          ctx.font = F;
+          // a dot for every distribution drawn so far, faded along with its ECDF
+          const hl = stage > NS ? io(pr(e, 0.9, 0.6)) : 0;   // final step: highlight the worst case
+          for (let i = 0; i <= NS; i++) {
+            const r = (11 + (i === 0 ? 4 * hl : 0)) * pop(i), a = alpha(i); if (r <= 0 || a <= 0) continue;
+            const p = bary(GENS[i]); ctx.globalAlpha = a; dot(p[0], p[1], r, BLUE); ctx.globalAlpha = 1;
+          }
+          // cursor gliding to the distribution currently being sampled
+          const mv = io(pr(e, 0, 0.7));
+          const from = stage === 0 ? 0 : stage <= NS ? stage - 1 : NS, to = stage === 0 ? 0 : stage <= NS ? stage : 0;
+          const c = bary(GENS[from].map((x, k) => lerp(x, GENS[to][k], mv)));
+          ctx.globalAlpha = 1 - hl; ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(c[0], c[1], 20, 0, 7); ctx.stroke();
+          if (hl > 0) {
+            const p = bary(GENS[0]);
+            ctx.globalAlpha = hl; ctx.strokeStyle = RED; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(p[0], p[1], 24, 0, 7); ctx.stroke();
+            ctx.fillStyle = RED; ctx.textAlign = 'right'; ctx.font = 'bold ' + F; ctx.fillText('worst-case \u03b8', p[0] - 36, p[1] + 12); ctx.font = F;
+          }
+          ctx.globalAlpha = 1;
+        }
+
+        // ---- right: ECDFs of the suprema ----
+        ctx.strokeStyle = INK; ctx.fillStyle = INK; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+        line([PX, Y0], [PX + PW, Y0]); line([PX, Y0], [PX, Y0 - H]); line([PX - 12, Y0 - HP], [PX, Y0 - HP]); line([PX - 12, Y0], [PX, Y0]);
+        ctx.textAlign = 'right'; ctx.fillText('1', PX - 22, Y0 - HP + 13); ctx.fillText('0', PX - 22, Y0 + 13);
+        // faint curves first, the active one on top
+        const order = sets.map((_, i) => i).filter(i => alpha(i) > 0).sort((a, b) => alpha(a) - alpha(b));
+        for (const i of order) {
+          const v = sets[i], n = v.length, a = alpha(i), sw = sweep(i);
+          if (sw > 0) {
+            ctx.save(); ctx.globalAlpha = a; ctx.beginPath(); ctx.rect(0, 0, PX + sw * PW + 2, LH); ctx.clip();
+            ctx.strokeStyle = BLUE; ctx.lineWidth = i === 0 ? 4 : 3.5; ctx.lineJoin = 'miter'; ctx.lineCap = 'butt';
+            ctx.beginPath(); ctx.moveTo(PX, Y0); let off = false;
+            for (let k = 0; k < n; k++) {
+              const x = xs(v[k]);
+              if (x > PX + PW) { ctx.lineTo(PX + PW, Y0 - k / n * HP); off = true; break; }
+              ctx.lineTo(x, Y0 - k / n * HP); ctx.lineTo(x, Y0 - (k + 1) / n * HP);
+            }
+            if (!off) ctx.lineTo(PX + PW, Y0 - HP);
+            ctx.stroke();
+            if (i === 0) for (let k = 0; k < n; k++) { dot(xs(v[k]), Y0 - (k + 1) / n * HP, 7, BLUE); dot(xs(v[k]), Y0, 7, INK); }
+            ctx.restore();
+          }
+          const ql = qline(i), x = xs(Qs[i]);
+          if (ql > 0 && x <= PX + PW) {
+            ctx.globalAlpha = a; ctx.setLineDash([0.1, 10]); ctx.lineCap = 'round'; ctx.strokeStyle = RED; ctx.lineWidth = 5;
+            line([x, Y0], [x, Y0 - ql * H]); ctx.setLineDash([]);
+            ctx.globalAlpha = clamp((ql - 0.6) / 0.4) * clamp((a - FAINT) / (1 - FAINT)); ctx.fillStyle = RED;
+            const left = x < PX + 0.45 * PW; ctx.textAlign = left ? 'left' : 'right';
+            ctx.fillText('1 \u2212 \u03b1 quantile', x + (left ? 18 : -18), Y0 - H + 30); ctx.globalAlpha = 1;
+          }
+        }
+      }
+      function resize() {
+        const w = cv.offsetWidth; if (!w) return;
+        const s = (window.devicePixelRatio || 1) * (window.Reveal && Reveal.getScale ? Reveal.getScale() : 1);
+        cv.width = Math.round(w * s); cv.height = Math.round(w * LH / LW * s); K = cv.width / LW; draw();
+      }
+      function loop(now) {
+        if (t0 === null) t0 = now;
+        e = (now - t0) / 1000; draw();
+        if (e < (END[stage] || 0)) raf = requestAnimationFrame(loop);
+      }
+      return {
+        animate(k) { cancelAnimationFrame(raf); stage = k; e = 0; t0 = null; resize(); raf = requestAnimationFrame(loop); },
+        snap(k) { cancelAnimationFrame(raf); stage = k; e = Infinity; resize(); },
+        resize
+      };
+    }
+
+    // Third animation: a generic evidence process E_t that stops the first time it crosses a threshold.
+    // Uses the same statistic options (data-stat, data-true, data-t, data-seed); data-threshold defaults to 1/alpha.
+    // Plays on its slide's first .suprema-step fragment, or on slide entry with data-autoplay="true".
+    function makeEvidence(cv) {
+      const d = cv.dataset, mdl = model(d), T = mdl.T;
+      const ALPHA = +(d.alpha || 0.05), TH = +(d.threshold || 1 / ALPHA), SEED = +(d.seed || 1);
+      const EW = 1664, EH = 420, EX = 110, EY = 330, EWd = 1480, EHt = 270;
+      const top = TH * 1.3, ys = v => EY - v / top * EHt, xt = t => EX + t / T * EWd;
+      let AP = null, HK = 0;
+      for (let s = 0; s < 5000 && !AP; s++) {
+        const p = mdl.path(rng(SEED * 6151 + 3 + s), mdl.trueGen), k = p.findIndex(x => x >= TH);
+        if (k >= 0.45 * T && k <= 0.85 * T && p[k] <= top) { AP = p.slice(0, k + 1); HK = k; }
+      }
+      const END = [0, 4.2];
+      const ctx = cv.getContext('2d');
+      let K = 1, stage = 0, e = Infinity, t0 = null, raf = 0;
+      const line = (a, b) => { ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); };
+      const dot = (x, y, r, f) => { ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = f; ctx.fill(); };
+      function draw() {
+        const cs = getComputedStyle(cv), INK = cs.color, F = FS + 'px ' + cs.fontFamily;
+        const pN = stage >= 1 ? pr(e, 0.3, 3) : 0, pHit = stage >= 1 ? back(pr(e, 3.35, 0.3)) : 0, pMsg = stage >= 1 ? io(pr(e, 3.45, 0.5)) : 0;
+        ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
+        ctx.setTransform(K, 0, 0, K, 0, 0); ctx.font = F; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        // axes
+        ctx.strokeStyle = INK; ctx.fillStyle = INK; ctx.lineWidth = 2.5;
+        line([EX, EY], [EX + EWd, EY]); line([EX, EY], [EX, EY - EHt - 20]);
+        ctx.textAlign = 'left'; ctx.fillText('t', EX + EWd + 16, EY + 12);
+        ctx.font = 'italic ' + F; ctx.textAlign = 'right'; ctx.fillText('E\u209c', EX - 20, EY - EHt + 10); ctx.font = F;
+        // threshold
+        ctx.setLineDash([0.1, 10]); ctx.strokeStyle = RED; ctx.lineWidth = 5; line([EX, ys(TH)], [EX + EWd, ys(TH)]); ctx.setLineDash([]);
+        ctx.fillStyle = RED; ctx.textAlign = 'left'; ctx.fillText('threshold', EX + 16, ys(TH) - 18);
+        if (!AP || pN <= 0) return;
+        // the evidence process, drawn up to the fractional index f
+        const f = pN * HK, k = Math.floor(f);
+        ctx.strokeStyle = BLUE; ctx.lineWidth = 4; ctx.beginPath();
+        for (let j = 0; j <= k; j++) { j ? ctx.lineTo(xt(j), ys(AP[j])) : ctx.moveTo(xt(j), ys(AP[j])); }
+        let hx = xt(k), hy = ys(AP[k]);
+        if (k < HK) { hx = xt(f); hy = ys(lerp(AP[k], AP[k + 1], f - k)); ctx.lineTo(hx, hy); }
+        ctx.stroke();
+        if (pN < 1) dot(hx, hy, 6, BLUE);
+        if (pHit > 0) {
+          const px = xt(HK), py = ys(AP[HK]);
+          ctx.globalAlpha = pMsg; ctx.setLineDash([0.1, 9]); ctx.lineWidth = 3; ctx.strokeStyle = INK; line([px, py], [px, EY]); ctx.setLineDash([]);
+          ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.fillText('\u03c4', px, EY + 48);
+          ctx.globalAlpha = 1; dot(px, py, 10 * pHit, RED);
+          const rt = px > EX + 0.7 * EWd; ctx.globalAlpha = pMsg; ctx.fillStyle = RED; ctx.textAlign = rt ? 'right' : 'left';
+          ctx.font = 'bold ' + F; ctx.fillText('stop: reject H\u2080', px + (rt ? -22 : 22), py - 14); ctx.font = F; ctx.globalAlpha = 1;
+        }
+      }
+      function resize() {
+        const w = cv.offsetWidth; if (!w) return;
+        const s = (window.devicePixelRatio || 1) * (window.Reveal && Reveal.getScale ? Reveal.getScale() : 1);
+        cv.width = Math.round(w * s); cv.height = Math.round(w * EH / EW * s); K = cv.width / EW; draw();
+      }
+      function loop(now) {
+        if (t0 === null) t0 = now;
+        e = (now - t0) / 1000; draw();
+        if (e < (END[stage] || 0)) raf = requestAnimationFrame(loop);
+      }
+      return {
+        animate(k) { cancelAnimationFrame(raf); stage = Math.min(k, 1); e = 0; t0 = null; resize(); raf = requestAnimationFrame(loop); },
+        snap(k) { cancelAnimationFrame(raf); stage = Math.min(k, 1); e = Infinity; resize(); },
+        resize
+      };
+    }
+
+    function init() {
+      const anims = new Map(), SEL = 'canvas.suprema, canvas.suprema-dgp, canvas.evidence';
+      const make = cv => cv.classList.contains('suprema-dgp') ? makeDGP : cv.classList.contains('evidence') ? makeEvidence : makeAnim;
+      document.querySelectorAll(SEL).forEach(cv => anims.set(cv, make(cv)(cv)));
+      const stageOf = slide => slide.querySelectorAll('.fragment.suprema-step.visible').length;
+      // an evidence canvas with data-autoplay="true" plays on slide entry; otherwise it waits for a .suprema-step fragment
+      const auto = cv => cv.classList.contains('evidence') && cv.dataset.autoplay === 'true';
+      const each = (slide, f) => slide && slide.querySelectorAll(SEL).forEach(cv => f(anims.get(cv), stageOf(slide), cv));
+      Reveal.on('fragmentshown', ev => { if (ev.fragment.classList.contains('suprema-step')) each(ev.fragment.closest('section'), (a, k) => a.animate(k)); });
+      Reveal.on('fragmenthidden', ev => { if (ev.fragment.classList.contains('suprema-step')) each(ev.fragment.closest('section'), (a, k) => a.snap(k)); });
+      Reveal.on('slidechanged', ev => each(ev.currentSlide, (a, k, cv) => auto(cv) ? a.animate(1) : a.snap(k)));
+      Reveal.on('resize', () => anims.forEach(a => a.resize()));
+      anims.forEach((a, cv) => a.snap(stageOf(cv.closest('section'))));
+      each(Reveal.getCurrentSlide(), (a, k, cv) => { if (auto(cv)) a.animate(1); });
+    }
+    (function boot() {
+      if (!window.Reveal || !Reveal.on) return setTimeout(boot, 50);
+      if (Reveal.isReady && Reveal.isReady()) init(); else Reveal.on('ready', init);
+    })();
   })();
-})();
 </script>

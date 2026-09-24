@@ -299,7 +299,6 @@ window.GW = (function () {
   }
   function row(cls) { return el("div", "gw-row" + (cls ? " " + cls : "")); }
   function sub(s) { return "<sub>" + s + "</sub>"; }
-  function fg(v) { return v >= 1000 ? d3.format(".3~s")(v) : d3.format(".4~r")(v); }
 
   // Save an SVG as a PNG, for the fallback snapshots.
   function snapshot(svgNode, name) {
@@ -414,6 +413,17 @@ window.GW = (function () {
     };
   }
 
+  // The search estimate of G_W, shown under each simplex. The label is
+  // written once as TeX, for MathJax to typeset with the rest of the slide;
+  // only the number is updated after that.
+  function supReadout(node) {
+    node.innerHTML = "\\(\\sup_{\\theta \\in \\Theta_0} g_W(\\theta) =\\) <span class=\"gw-supv\"></span>";
+    var v = node.querySelector(".gw-supv");
+    // Fixed decimals (trailing zeros kept) so the label does not jitter as
+    // points move; very large values switch to SI notation, still 3 digits.
+    return function (g) { v.textContent = g < 1000 ? g.toFixed(3) : d3.format(".3s")(g); };
+  }
+
   // Readout rows: [label html, value html].
   function readout(node, rows) {
     node.innerHTML = rows.map(function (r) {
@@ -487,14 +497,15 @@ window.GW = (function () {
     }
     var cBox = null, cUpdate = null;
     if (cfg.cSlider) { cBox = el("div", "gw-cslider"); cUpdate = cSliderView(cBox, function (v) { logC = v; schedule(); }); }
-    var out = el("div", "gw-readout");
+    var out = el("div", "gw-sup"), showSup = supReadout(out);
 
     panel.append(controls);
     if (editTabs) panel.append(editTabs.el);
     if (presetRow) panel.append(presetRow);
     if ((cfg.buttons || []).length || cfg.fitted) panel.append(actRow);
     if (cBox) panel.append(cBox);
-    panel.append(btnRow, out);
+    panel.append(btnRow);
+    fig.append(out);
 
     // The button uses an exact line search for the new atom's weight: KL is
     // convex along the segment, but so curved near the edges that the
@@ -601,7 +612,7 @@ window.GW = (function () {
       view.drawField(res, logC / Math.LN10);
       drawAtoms();
       if (cfg.cSlider) cUpdate(logC, res.gmax, res.maxr);
-      readout(out, [["max of g" + sub("W") + " over the null", fg(res.gmax)]]);
+      showSup(res.gmax);
     }
     var pending = false;
     function schedule() {
@@ -833,7 +844,11 @@ window.GW = (function () {
       views = sc.runs.map(function (r) {
         var box = el("div", "gw-panel-cell");
         panelsRow.append(box);
-        return TernaryView(box, { colourBar: false, title: r.title });
+        var v = TernaryView(box, { colourBar: false, title: r.title });
+        var supNode = el("div", "gw-sup");
+        box.append(supNode);
+        v.sup = supReadout(supNode);
+        return v;
       });
       pos = 0; draw();
     }
@@ -880,6 +895,7 @@ window.GW = (function () {
     function draw() {
       sc.runs.forEach(function (r, k) {
         var i = indexAt(r.trace), it = r.trace.iters[i], res = resFor(r.trace, i), v = views[k];
+        v.sup(res.gmax);
         v.drawField(res, 0);
         var data = it.atoms.map(function (a, j) { return { a: awayFromEdges(a), w: it.weights[j], mix: "nul" }; });
         data.push({ a: r.trace.scenario.mu, w: 0.5, mix: "alt" });

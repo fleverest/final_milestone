@@ -65,3 +65,10 @@
 .gw-playback .gw-ctl input[type=range] { width: 120px; }
 .gw-reader { max-width: 560px; margin: 0 auto; }
 .gw-reader svg { max-height: 540px; }
+/* Centred under the triangle: in the 600-wide viewBox with a colour bar the
+   triangle occupies the left 500 units. */
+.gw-sup { text-align: center; font-size: 22px; margin-top: 4px; font-variant-numeric: tabular-nums; width: 83.3%; }
+.gw-supv { margin-left: 0.2em; }
+.gw-playback .gw-sup, .gw-reader .gw-sup { width: 100%; }
+.gw-supv { font-weight: 600; display: inline-block; min-width: 3.6em; text-align: left; }
+.gw-playback .gw-sup { font-size: 17px; margin-top: 0; }

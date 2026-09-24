@@ -96,36 +96,61 @@ output-file: index.html
 :::
 
 
-## The hypothesis test {style="--list-gap: 2.5em"}
+## The hypothesis test {style="--list-gap: 2em"}
 
 - $H_0$: the reported outcome is incorrect
-  * certify = reject $H_0$
+  * reject $H_0\longrightarrow$ certify
 
 - $H_1$: The reported outcome is correct
-  * recount = accept $H_0$
+  * accept $H_0\longrightarrow$ recount
+  * recounts are expensive!! 
+  * some audits never accept $H_0$: they are "power-one"
 
 
 ## Sequential test
 
 - Observing votes sequentially: $X_1,X_2,\dots$
 
-- Construct a stochastic process $E_t$ to summarise "evidence against $H_0$"
+- Construct a stochastic process $E_t$
+  * $E_t$ summarises the "evidence for $H_1$ against $H_0$"
 
-(Animation here of E_t against t, stopping when E_t hits some threshold.)
+<canvas class="evidence" data-stat="bf" data-true="0.45,0.35,0.2" data-t="100" data-seed="1" data-alpha="0.05"
+        style="width:100%; aspect-ratio:1664/420;"></canvas>
+
+<span class="fragment suprema-step"></span>
 
 
-## Plurality elections {style="--list-gap: 2.5em"}
+## Why sequential tests? {style="--list-gap: 1.2em"}
 
-- Voters select only one candidate
+- Accepting $H_0$ is expensive [(full recount!)]{.side}
 
-- Whoever gets the most votes wins
+- A fixed-sample test needs a huge sample for enough power
 
+- Sequential tests need fewer samples on average [(occasionally many more)]{.side}
+
+- The average is what matters:
+  * elections keep happening [(…hopefully)]{.side}
+  * many contests [(e.g. different seats)]{.side}
+
+
+# Setting
+
+## Plurality elections, with-replacement {style="--list-gap: 1.5em"}
+
+- Plurality
+  * Voters select only one candidate
+  * Whoever gets the most votes wins
+
+- Sampling with replacement
+  * Observations are i.i.d.
+  * $X_t \overset{d}{=} X_{t'}$
+  * Not used in practice $\not\Rightarrow$ impractical!
 
 ## $K$-candidate plurality
 
-* $\theta = (\theta_1,\theta_2,\dots,\theta_K)$ are the proportions of votes for each candidate
+- $\theta = (\theta_1,\theta_2,\dots,\theta_K)$ are the proportions of votes for each candidate
 
-* Candidate 1 is the reported winner
+- Candidate 1 is the reported winner
 
 - $H_0$: candidate 1 did not really win
   * $\theta_1\leq\theta_i$ *for some* $i\neq1$
@@ -134,13 +159,15 @@ output-file: index.html
   * $\theta_1>\theta_i$ *for all* $i\neq1$
 
 
-## Two candidates: easy
+## Two candidates (the easy case)
 
-- Drawing observations at random: $X_t \sim \mathrm{Bernoulli}(\theta)$.
-- $H_0: \theta \le 1/2$ against $H_1: \theta > 1/2$.
-- BRAVO [@bravo2012] and ALPHA [@alpha_mart] solve this well.
+- Observations are $X_t \sim \mathrm{Bernoulli}(\theta)$.
+- $H_0: \theta_1 \le 1/2$ against $H_1: \theta_1 > 1/2$.
+- Very well-studied:
+  * BRAVO [@bravo2012]
+  * ALPHA [@alpha_mart]
 
-```{.tikz width="75%"}
+```{.tikz width="100%"}
 \begin{tikzpicture}[x=12cm, y=1cm]
   % Null H0: theta <= 1/2, shaded as in the ternary diagrams
   \fill[nullfill] (0,0) rectangle (0.5,1.4);
@@ -149,7 +176,7 @@ output-file: index.html
   \draw[thick] (0,0) -- (1,0);
   \foreach \x/\l in {0/0, 1/1} \draw (\x,0.12) -- (\x,-0.12) node[below] {$\l$};
   \draw[line width=1.1pt] (0.5,0.2) -- (0.5,-0.2) node[below] {$1/2$ (tie)};
-  \node[right] at (1.02,0) {$\theta$};
+  \node[right] at (1.02,0) {$\theta_1$};
 
   % Region labels
   \node at (0.25,0.7) {$H_0$};
@@ -157,10 +184,6 @@ output-file: index.html
 \end{tikzpicture}
 ```
 
-::: notes
-Timing: 1 minute.
-Keep this short. The point to plant is that the null is an interval with one boundary point, the tie.
-:::
 
 ## Reading a ternary diagram
 
@@ -169,24 +192,13 @@ Keep this short. The point to plant is that the null is an interval with one bou
 <script>GW.reader({ fig: "gw-reader", point: [0.45, 0.35, 0.20] });</script>
 ```
 
-::: notes
-Timing: 1.5 minutes. This slide carries the rest of the talk, so do not rush it.
-Three candidates: theta = (theta1, theta2, theta3) with theta1 + theta2 + theta3 = 1.
-Each vertex is a unanimous election; the centre is the three-way tie.
-Distance from the edge opposite a vertex is that candidate's share.
-Move the cursor around: to a vertex, the centre, the two-way ties at the midpoints of the left and right edges.
-Take the cursor off the diagram and the pointer returns to the example election (0.45, 0.35, 0.20),
-the alternative used in every widget; read its three coordinates aloud.
-:::
-
 ## Three candidates: the plurality null
 
 ::: {.columns}
 ::: {.column width="50%"}
-- $\Theta_1 = \{\theta_1 > \theta_2 \text{ and } \theta_1 > \theta_3\}$
-- $\Theta_0 = \{\theta_1 \le \theta_2\} \cup \{\theta_1 \le \theta_3\}$
+- $H_1 = \{\theta_1 > \theta_2 \text{ and } \theta_1 > \theta_3\}$
+- $H_0 = \{\theta_1 \le \theta_2\} \cup \{\theta_1 \le \theta_3\}$
 - A union of two half-spaces, and not convex.
-- Its convex hull is $\{\theta_1 \le 1/2\}$.
 :::
 ::: {.column width="50%"}
 ```{.tikz width="100%"}
@@ -229,21 +241,55 @@ the alternative used in every widget; read its three coordinates aloud.
 :::
 :::
 
-::: notes
-Timing: 1 minute.
-The non-convexity is the source of every difficulty that follows; say it in those words.
-The gap between the null and its hull is where candidate 1 has a plurality but not a majority.
-:::
-
-# The question
-
-<!-- Section budget: 2 minutes, 2 slides. -->
+# The cost of decomposition [in risk-limiting election audits]{style="color: gray;"}
 
 ## The state of the art runs one test per pair
 
 ::: {.columns}
-::: {.column style="width: 50%; text-align: center;"}
-```{.tikz height="400px"}
+::: {.column style="width: 30%; text-align: center;"}
+```{.tikz height="300px"}
+\usetikzlibrary{calc}
+\begin{tikzpicture}
+  % Simplex vertices: \theta_1 (top), theta_2 (bottom-left), theta_3 (bottom-right)
+  \coordinate (T1) at (4,6.928);
+  \coordinate (T2) at (0,0);
+  \coordinate (T3) at (8,0);
+
+  % Barycentric helper points
+  \coordinate (G)   at (barycentric cs:T1=1,T2=1,T3=1); % centroid (1/3,1/3,1/3)
+  \coordinate (M12) at (barycentric cs:T1=1,T2=1);      % midpoint of T1--T2 edge
+  \coordinate (M13) at (barycentric cs:T1=1,T3=1);      % midpoint of T1--T3 edge
+
+  % Shade H1 region: candidate 1 is the plurality winner
+  \fill[nullfill] (T2) -- (M12) -- (G) -- (M13) -- (T3) -- cycle;
+
+  % Simplex outline
+  \draw[thick] (T1) -- (T2) -- (T3) -- cycle;
+
+  % Decision boundaries theta1=theta2 and theta1=theta3
+  \draw[line width=1.1pt] (M12) -- (G);
+  \draw[line width=1.1pt] (G)   -- (M13);
+
+  % Region labels
+  \node at (barycentric cs:T1=0.5,T2=0.25,T3=0.25) {$H_1$};
+  \node at (barycentric cs:T1=0.2,T2=0.4,T3=0.4)   {$H_0$};
+
+  % Boundary labels
+  \node[font=\small] at (barycentric cs:T1=0.35,T2=0.5,T3=0.15) {$\theta_1=\theta_2$};
+  \node[font=\small] at (barycentric cs:T1=0.35,T2=0.15,T3=0.5) {$\theta_1=\theta_3$};
+
+  % Vertex labels
+  \node[above]       at (T1) {$\theta_1$};
+  \node[below left]  at (T2) {$\theta_2$};
+  \node[below right] at (T3) {$\theta_3$};
+\end{tikzpicture}
+```
+:::
+::: {.column style="width: 5%; text-align: center;"}
+[$=$]{style="top: 150px; position: relative;"}
+:::
+::: {.column style="width: 30%; text-align: center;"}
+```{.tikz height="300px"}
 \usetikzlibrary{calc}
 \begin{tikzpicture}
   \coordinate (T1) at (4,6.928);
@@ -274,8 +320,11 @@ The gap between the null and its hull is where candidate 1 has a plurality but n
 \end{tikzpicture}
 ```
 :::
-::: {.column style="width: 50%; text-align: center;"}
-```{.tikz height="400px"}
+::: {.column style="width: 5%; text-align: center;"}
+[$+$]{style="top: 150px; position: relative;"}
+:::
+::: {.column style="width: 30%; text-align: center;"}
+```{.tikz height="300px"}
 \usetikzlibrary{calc}
 \begin{tikzpicture}
   \coordinate (T1) at (4,6.928);
@@ -308,40 +357,34 @@ The gap between the null and its hull is where candidate 1 has a plurality but n
 :::
 :::
 
-- SHANGRLA [@stark2020shangrla]: test $H_{02}: \theta_1 \le \theta_2$ and $H_{03}: \theta_1 \le \theta_3$ separately, each at level $\alpha$.
-- Certify when every pairwise null is rejected: an intersection-union test [@Berger1982].
+- SHANGRLA: [[@stark2020shangrla]]{.side}
+  * Test $H_{02}: \theta_1 \le \theta_2$ and $H_{03}: \theta_1 \le \theta_3$ separately
+- Certify when every pairwise null is rejected: [an intersection-union test [@Berger1982]]{.side}
 
-::: notes
-Timing: 1 minute.
-Valid and convenient, since each pair is a one-dimensional problem we already know how to solve.
-:::
 
 ## Why not just do one test? {.center}
 
-::: {.bigq}
-Two tests are valid.<br>
-Is one test on the original null better?
-:::
+- Testing one-dimensional hypotheses is easy to do well.
 
-- At a fixed sample size, intersection-union tests can be inadmissible [@Berger1994].
-- For sequential tests, measured in ballots sampled, nobody knows.
+- But could doing a single test in the original null do better?
 
-::: notes
-Timing: 1 minute.
-This is the thesis question. Say it as "what does the decomposition cost, in ballots?"
-:::
+- In the classical setting:
+  * *some* intersection-union tests can be improved on [[@Berger1989]]{.side}
 
-# Why it is hard
+- In our setting it is an open problem
 
-<!-- Section budget: 2 minutes, 2 slides. -->
 
-## Bayesian tests handle the null directly
+## Bayesian tests
 
 ::: {.columns}
 ::: {.column width="55%"}
-- Put a prior $W_1$ on $\Theta_1$ and $W_0$ on $\Theta_0$.
-- Bayes factor $B_t = p_{W_1}(X^t) / p_{W_0}(X^t)$ needs no decomposition.
-- Bayesian audits do this [@bayesian_audits; @Huang_2020].
+
+[Bayes factors are classically interpreted as summarising evidence for/against competing models.]{.side}
+
+- Place a prior $W_1$ on $H_1$ and $W_0$ on $H_0$
+- The Bayes factor is the marginal likelihood $B_t = p_{W_1}(X^t) / p_{W_0}(X^t)$
+- Bayesian audits track $B_t$ over time [[@bayesian_audits; @Huang_2020]]{.side}
+- Reject when $B_t>\kappa$, chosen a priori
 :::
 ::: {.column width="45%"}
 ```{.tikz width="100%"}
@@ -391,118 +434,113 @@ This is the thesis question. Say it as "what does the decomposition cost, in bal
 :::
 :::
 
-::: notes
-Timing: 1 minute.
-The appeal is that the prior lives on the whole simplex, so the non-convex null is no obstacle to writing the test down.
-:::
 
-## But Type I error control matters
+## But Type I error control matters, {style="--list-gap: 1.5em"}
 
-- $B_t$ is a martingale under the prior mixture $P_{W_0}$, not under each $P_{\boldsymbol\theta}$, $\boldsymbol\theta \in \Theta_0$.
-- So "reject when $B_t > 1/\alpha$" is not risk-limiting in general.
-- A likelihood ratio test does not just work either. **More on that later.**
+and unfortunately, choosing $\kappa$ to control Type I error at level $\alpha$ is hard.
 
-::: notes
-Timing: 1 minute.
-Say the last line exactly as written. It is repeated verbatim when the loop closes in the higher-dimensions section.
-:::
+- We want to select $\kappa$ such that $$\mathrm{P}_\theta\big(B_t>\kappa\text{ for some }t\big)\leq\alpha\text{ for all }\theta\in H_0.$$
+- Later we will see that for some choices of $W_1, W_0$ this is easy.
+- For others it will be impossible.
 
-# Progress
 
-<!-- Section budget: 2 minutes, 2 slides. -->
+# Now that we know what it's all about...
 
 ## At the last milestone (October 2025)
 
-<!--
-Fill the last-milestone percentages from the 2025 report.
-The 2026 report says chapters 4, 5 and 7 are unchanged since then, so their
-2025 numbers are presumably the same as now; check against the 2025 report.
-Chapter 6 did not exist. Chapter 8 was "practically empty".
--->
-
 ::: {style="font-size: 0.6em"}
-| Ch. | Title | Summary | Progress |
-|---|---|---|---|
-| 1 | Introduction | RLAs, ballot polling, the $K > 2$ problem | TODO |
-| 2 | Sequential tests for auditing plurality elections | Literature review; SAVI and sequential Bayes unfinished | TODO |
-| 3 | Post-election audits for plurality | Hypotheses, pairwise decomposition, the two frameworks | TODO |
-| 4 | Risk-limiting Bayesian audits | Monte Carlo calibration with a maximum sample size | 95% |
-| 5 | Empirical performance study | Calibrated Bayesian audits against ALPHA | 50% |
-| 6 | (did not exist) | | 0% |
-| 7 | Secretly sampling with replacement | With-replacement model on a without-replacement audit | 30% |
-| 8 | Conclusion | Practically empty | TODO |
+|Ch.| Title                                             | Summary                                          | Progress |
+|---|---------------------------------------------------|--------------------------------------------------|---|
+| 1 | Introduction                                      | The stuff we just talked about                   | Placeholder |
+| 2 | Sequential tests for auditing plurality elections | Literature review                                | 50% |
+| 3 | Post-election audits for plurality                | Notation and methods in more detail              | 75% |
+| 4 | Risk-limiting Bayesian audits                     | Calibrating Bayesian audits to be risk-limiting  | 95% |
+| 5 | (did not exist)                                   |                                                  | 0% |
+| 6 | Empirical performance study                       | Measure Bayesian audits against ALPHA            | 50% |
+| 7 | Secretly sampling with replacement                | When to adopt with-replacement models            | 30% |
+| 8 | Conclusion                                        | Empty                                            | TODO |
 :::
 
-::: notes
-Timing: 45 seconds. Do not read the table; point at chapters 4 and 5, which were the plan last year.
-:::
+The main advice: *finish the literature review*
 
 ## Now (September 2026)
 
 ::: {style="font-size: 0.6em"}
-| Ch. | Title | Summary | Progress |
-|---|---|---|---|
-| 1 | Introduction | Rewritten around the cost of decomposition | TODO: ~complete |
-| 2 | Sequential tests for auditing plurality elections | SAVI and sequential Bayes sections written (pp. 29–47) | 90% |
-| 3 | Post-election audits for plurality | Pairwise decomposition as a map to 1D | 99% |
-| 4 | Risk-limiting Bayesian audits | Unchanged; rerun with larger $T$ | 95% |
-| 5 | Empirical performance study | Paused until batch-sequential tests exist | 50% |
-| 6 | Log-optimal election auditing | **New: the ALE manuscript** | TODO |
-| 7 | Secretly sampling with replacement | Demoted to a short empirical study | 30% |
-| 8 | Conclusion | Skeleton | 20% |
+|Ch.| Title                                             | Summary                                          | Progress |
+|---|---------------------------------------------------|--------------------------------------------------|---|
+| 1 | Introduction                                      | Rewritten around the cost of decomposition       | 90% |
+| 2 | Sequential tests for auditing plurality elections | **SAVI and Bayesian sections written (+18 pgs)** | 95% |
+| 3 | Post-election audits for plurality                | Pairwise decomposition as a map to 1D            | 90% |
+| 4 | Risk-limiting Bayesian audits                     | Calibrating Bayesian audits to be risk-limiting  | 95% |
+| 5 | Log-optimal election auditing                     | **New manuscript: ALE**                          | 80% |
+| 6 | Empirical performance study                       | Unchanged, awaiting new methods to include       | 50% |
+| 7 | Secretly sampling with replacement                | Unchanged, **scope reduced**                     | 50% |
+| 8 | Conclusion                                        | Empty                                            | 20% |
 :::
 
-- The "try safe testing" item derailed the plan, and became the year's main work.
+- The manuscript is the biggest contribution
+- It unlocks multiple avenues of future work / low-hanging fruit
 
-<!--
-Colour the chapter 6 row as new and the chapter 5 row as paused.
-Pandoc pipe tables cannot take row classes; either convert this table to a raw
-HTML table with <tr class="new-row"> and <tr class="paused-row"> (the CSS is in
-the header), or colour the cells with spans. Reuse the same styling when the
-table returns near the end.
--->
 
-::: notes
-Timing: 1 minute.
-Say plainly that chapter 5 is paused on purpose: the comparison that matters is against batch-sequential tests, which chapter 6 makes possible.
-:::
+## The rest of this presentation
+
+* Calibrated Bayesian audits [(first project)]{.side}
+
+* Safe, anytime-valid inference, and
+  * ALE: Approximately Log-optimal E-variables [(brand new)]{.side}
 
 # Bayesian audits (last year)
 
-<!-- Section budget: 2 minutes, 2 slides. Keep it short: this is not the main story. -->
+## Controlling Type I error via truncation {style="--list-gap: 1.5em"}
 
-## Controlling Type I error with a maximum sample size
+- Fix a maximum sample size $T$ [(aka truncation)]{.side}
+- Then $\bar B = \sup_{t \le T} B_t$ is bounded
+- Compute the threshold by Monte Carlo:
+  * estimate the $(1-\alpha)$--quantile
+  * under the "worst-case null"
 
-::: {.columns}
-::: {.column width="50%"}
-- Fix a maximum sample size $T$. Then $\bar B = \sup_{t \le T} B_t$ is bounded.
-- Threshold: the worst-case $(1-\alpha)$ quantile of $\bar B$ over $\Theta_0$.
-- Symmetric Dirichlet priors: the worst case is on the boundary, and Monte Carlo puts it at the two-way tie.
-:::
-::: {.column width="50%"}
-::: {.fetch}
-slides/fig/worst_case_cdfs.svg, from figures/worst_case_cdfs.pdf (recipe A).
-:::
-:::
-:::
+[movie time...]{.side}
+
 
 ::: notes
 Timing: 1 minute.
 The worst case being the two-way tie will come back: in the K = 2 likelihood ratio the tie is the whole story.
 :::
 
-## Distribution of suprema [Claude Opus 5.5]{style="float: right; font-size: 0.4em; font-weight: 400; opacity: 0.6; margin-top: 1.5em;"}
+## The Monte Carlo step [Claude Opus 5.5]{style="float: right; font-size: 0.4em; font-weight: 400; opacity: 0.6; margin-top: 1.5em;"}
 
-<canvas class="suprema" data-n="25" data-t="20" data-seed="3" data-alpha="0.05"
+
+<canvas class="suprema" data-stat="bf" data-null="0.5,0.5,0" data-true="0.45,0.35,0.2"
+        data-n="25" data-t="100" data-seed="126" data-alpha="0.05"
         style="width:100%; aspect-ratio:1664/776;"></canvas>
 
-<!-- one fragment per stage: paths, suprema, rotate + ECDF, quantile, rotate back -->
+<!-- one fragment per stage: paths, suprema, rotate + ECDF, quantile, rotate back, drifting process -->
 <span class="fragment suprema-step"></span>
 <span class="fragment suprema-step"></span>
 <span class="fragment suprema-step"></span>
 <span class="fragment suprema-step"></span>
 <span class="fragment suprema-step"></span>
 <span class="fragment suprema-step"></span>
+
+## Changing the distribution [Claude Opus 5.5]{style="float: right; font-size: 0.4em; font-weight: 400; opacity: 0.6; margin-top: 1.5em;"}
+
+<canvas class="suprema-dgp" data-stat="bf" data-null="0.5,0.5,0"
+        data-thetas="0.3333333,0.3333333,0.3333334;0.25,0.3333333,0.4166667"
+        data-n="25" data-t="100" data-seed="126" data-alpha="0.05" data-m="200"
+        style="width:100%; aspect-ratio:1664/776;"></canvas>
+
+<!-- one fragment per theta in data-thetas, then one to re-highlight the original -->
+<span class="fragment suprema-step"></span>
+<span class="fragment suprema-step"></span>
+<span class="fragment suprema-step"></span>
+
+## My findings {style="--list-gap: 2em"}
+
+- The "worst-case null" is always the two-way tie (50/50 split, rest zero)
+  * Proven for a symmetric Dirichlet priors
+  * Otherwise somewhere on the boundary for a wider class
+- It compares quite similarly to the current state of the art
+- ...but it requires truncation at $T$.
 
 ## What it bought, and what it cost
 
