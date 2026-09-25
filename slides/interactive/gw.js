@@ -698,7 +698,7 @@ window.GW = (function () {
     var handles = svg.append("g");
 
     var controls = row("gw-controls");
-    var nS = slider("n", 1, 50, st.n, function (v) { st.n = v; draw(); });
+    var nS = slider(cfg.nLabel || "n", 1, 50, st.n, function (v) { st.n = v; draw(); });
     controls.append(nS.el,
       button("reset", function () { st.mu = init.mu; st.nu = init.nu; st.n = init.n; nS.value = st.n; draw(); }),
       button("snapshot", function () { snapshot(svg.node(), cfg.name || "likelihood-ratio"); }));

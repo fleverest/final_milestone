@@ -379,10 +379,10 @@ output-file: index.html
 ::: {.columns}
 ::: {.column width="55%"}
 
-[Bayes factors are classically interpreted as summarising evidence for/against competing models.]{.side}
+[Bayes factors (BF) are classically interpreted as summarising evidence for/against competing models.]{.side}
 
 - Place a prior $W_1$ on $H_1$ and $W_0$ on $H_0$
-- The Bayes factor is the marginal likelihood $B_t = p_{W_1}(X^t) / p_{W_0}(X^t)$
+- The BF is the marginal likelihood ratio $B_t = p_{W_1}(X^t) / p_{W_0}(X^t)$
 - Bayesian audits track $B_t$ over time [[@bayesian_audits; @Huang_2020]]{.side}
 - Reject when $B_t>\kappa$, chosen a priori
 :::
@@ -534,93 +534,148 @@ The worst case being the two-way tie will come back: in the K = 2 likelihood rat
 <span class="fragment suprema-step"></span>
 <span class="fragment suprema-step"></span>
 
-## My findings {style="--list-gap: 2em"}
+## My findings {style="--list-gap: 1.5em"}
 
 - The "worst-case null" is always the two-way tie (50/50 split, rest zero)
   * Proven for a symmetric Dirichlet priors
   * Otherwise somewhere on the boundary for a wider class
-- It compares quite similarly to the current state of the art
-- ...but it requires truncation at $T$.
 
-## What it bought, and what it cost
+- It compares quite similarly to the (recalibrated) state of the art
+  * State of the art threshold can be ~halved with $T=10,000$
+
+- ...but it requires truncation at $T$
+
+## What's wrong with truncation? {style="--list-gap: 1em"}
 
 ::: {.columns}
-::: {.column width="50%"}
-::: {.fetch}
-slides/fig/expected_sample_size.svg (or reject_probability.svg), recipe A.
+::: {.column style="width: 60%;"}
+- It permits optional stopping
+  * We are allowed to "peek" at the data
+  * stop early if we have strong evidence
+
+- But not optional continuation
+  * Threshold $\kappa=100$
+  * $T=1000$
+  * What if $B_{1000}=99$?
+:::
+::: {.column style="width: 40%; text-align: center; "}
+::: {.fragment style="margin-top: 5em;"}
+![Full recount, sorry...](./figures/Chance_go_to_recount.webp){width=100%}
 :::
 :::
-::: {.column width="50%"}
-- With a horizon, ALPHA's $1/\alpha$ threshold can be roughly halved.
-- Otherwise the calibrated Bayesian audit and ALPHA perform similarly.
-- Costs: a fixed horizon, a simulated threshold, and no guarantee after $T$.
-:::
 :::
 
-::: notes
-Timing: 1 minute.
-The costs motivate the next section: we want error control that does not depend on a horizon.
-:::
+# Safe, anytime-valid inference
 
-# E-variables and martingales
 
-<!-- Section budget: 6 minutes, 7 slides, including widget 1. -->
+## E-variables {style="--list-gap: 2em;"}
 
-## E-variables: bets against the null
+- A nonnegative random variable $E$ with $\mathbb{E}_{P_\theta}[E] \le 1$ for every $\theta\in H_0$
+- By Markov: reject when $E \geq 1/\alpha$ [(a loose bound, but buys a lot of freedom)]{.side}
+- Independent (or conditional) e-variables can be multiplied
+- The result is another e-variable
 
-- An *e-variable* is $E \ge 0$ with $\mathbb{E}_P[E] \le 1$ for every $P$ in the null [@vovk2021evalues; @RamdasGameTheoretic2023].
-- Reject when $E \ge 1/\alpha$. By Markov's inequality this is level $\alpha$.
-- Betting reading [@Shafer2021]: $E$ is the payoff of a bet that costs 1. The house accepts only bets that cannot win on average under the null.
-- Evidence is money won.
+## Betting interpretation [[@Shafer2021]]{.side}
 
-::: notes
-Timing: 1 minute.
-The gambler believes Q, the house believes the null. Keep this picture; log-optimality is the gambler's strategy.
-:::
+- The null model represents what the house believes
+  * The house will accept any bet we propose...
+  * ...provided it has expected value $\leq1$
 
-## Optional stopping and optional continuation
+- If $H_0$ is wrong, we should be able to win some money
 
-- A *test supermartingale* $S_t$: $S_0 = 1$, nonnegative, a supermartingale under every null distribution.
-- Ville's inequality [@ville]: $P(\sup_t S_t \ge 1/\alpha) \le \alpha$.
-- So stop whenever you like, and stopped $S_\tau$ is still an e-variable.
-- Continue whenever you like: reinvest the winnings, and products of e-variables from successive batches stay valid.
+- So we design a payoff $E$
+  * We expect $E$ to be large
+  * while under $H_0$, it does not make money on average
 
-::: notes
-Timing: 1 minute.
-Optional continuation is what the batch construction at the end relies on, so say it here.
-:::
+## Betting interpretation continued {style="--list-gap: 2em;"}
 
-## Two candidates: the likelihood ratio
+- Our winnings represent our evidence accumulated against $H_0$
+
+- If someone walks into a casino with \$1 and walks out a millionaire...
+  * ...something fishy is going on
+
+- Winnings can be reinvested to gather more evidence
+
+
+## Test supermartingales {style="--list-gap: 2em"}
+
+- A *test supermartingale* is a nonnegative stochastic process $(S_t)$:
+  * $S_0 = 1$ [(start with \$1)]{.side}
+  * $\mathbb{E}_{P_\theta}[S_t | X_1,\dots,X_{t-1}]\leq S_{t-1}$ [(house always expects us to lose money)]{.side}
+
+- @ville: $P(\sup_t S_t \ge 1/\alpha) \le \alpha$
+  * "time-uniform" Markov's inequality
+  * no $T$ needed!
+
+
+## Anytime-validity {style="--list-gap: 1em"}
+
+- Stop whenever you like!
+  * the stopped process $S_\tau$ is an e-variable
+  * $\tau$ can be any stopping time: "my boss told me to stop"
+
+- Continue whenever you like!
+  * reinvest the winnings
+  * products of e-variables (from successive batches) are e-variables
+
+- Safe!
+
+
+## An e-variable we all know {style="--list-gap: 1.5em;"}
+
+- E-variables generalise likelihood ratios [[@vovk2021evalues]]{.side}
+
+- The simple likelihood ratio $\frac{p_\mu(X)}{p_\nu(X)}$ is an e-variable for $H_0:\theta=\nu$:
+$$
+\mathbb{E}_{P_\nu}\left[\frac{p_\mu(X)}{p_\nu(X)}\right] = 1
+$$
+- ...but what about composite nulls like $H_0: \theta\leq\nu$?
+
+
+## BRAVO [[@bravo2012]]{.side}
+
+- Set $\mu$ to be the reported winners share ($>1/2$)
+
+- Set $\nu = 1/2$
+
+- The e-variable at time $t$ is the product of Bernoulli likelihood ratios:
+$$
+E_t = \prod_{i=1}^t \left(\frac{\mu}{\nu}\right)^{X_i}\left(\frac{1-\mu}{1-\nu}\right)^{1-X_i}
+$$
+
+- $(E_t)$ is a test supermartingale for every $\theta\leq1/2$ [(pretty nifty!)]{.side}
+
+
+## The expected likelihood ratio
 
 ::: {style="font-size: 0.8em;"}
-$$E = \prod_{t=1}^n \left(\frac{\mu}{\nu}\right)^{X_t}\left(\frac{1-\mu}{1-\nu}\right)^{1-X_t},
+$$E_t = \prod_{i=1}^t \left(\frac{\mu}{\nu}\right)^{X_i}\left(\frac{1-\mu}{1-\nu}\right)^{1-X_i},
 \qquad
-g(\theta) = \mathbb{E}_\theta[E] = \left(\theta\frac{\mu}{\nu} + (1-\theta)\frac{1-\mu}{1-\nu}\right)^n.$$
+g(\theta) = \mathbb{E}_\theta[E].$$
 :::
-
-<!-- Fallback PNGs still to capture with the snapshot button: the four demo states in the notes. -->
 
 ```{=html}
 <div id="gw1"></div>
-<script>GW.line({ fig: "gw1", mu: 0.6, nu: 0.5, n: 10, name: "widget1" });</script>
+<script>GW.line({ fig: "gw1", mu: 0.6, nu: 0.5, n: 10, nLabel: "t", name: "widget1" });</script>
 ```
 
 ::: notes
-Timing: 2 minutes, including the demo.
-The curve always crosses 1 at theta = nu. That is the fact that fails in two dimensions.
+The curve always crosses 1 at theta = nu.
 
 Demo: drag the blue triangle (mu) and the vermillion circle (nu) along the axis. nu snaps to 1/2.
 
 1. Start at nu = 1/2: the curve crosses 1 exactly at the tie, valid.
 2. Drag nu to 0.4: the curve crosses 1 at 0.4, and the band (0.4, 0.5] goes above 1 (thick stroke).
-3. Drag nu to 0.55: valid again, but the growth readout drops.
-4. Move the n slider: the curve steepens but still crosses 1 at nu.
-   This is monotone likelihood ratio at work, and why one null point serves every n.
+3. Drag nu to 0.55: valid again, but g<1 for all of H0, so it is "not the best choice" in some sense.
+4. There is a t slider too that controls sample size, not sure if I will use it.
 :::
 
-## Log-optimality
+## How to choose your e-variable
 
-- Many e-variables are valid. Which is best?
+- We saw any $1/2<\nu<\mu$ yields an e-variable
+
+- Intuitively, $\nu=1/2$ seems optimal because its expectation reaches 1 within $H_0$ 
+
 - Growth $\mathbb{E}_Q[\log E]$: a gambler stopping at $1/\alpha$ needs about $\log(1/\alpha) / \mathbb{E}_Q[\log E]$ rounds [@Breiman1961; @Kelly1956].
 - For a point alternative $\mu > 1/2$, the likelihood ratio against the tie is log-optimal.
 - For a mixture $Q = P_{W_1}$ over the alternative, $p_{W_1}/p_{1/2}$ is log-optimal for $Q$.
