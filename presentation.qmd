@@ -629,7 +629,7 @@ The worst case being the two-way tie will come back: in the K = 2 likelihood rat
 $$
 \mathbb{E}_{P_\nu}\left[\frac{p_\mu(X)}{p_\nu(X)}\right] = 1
 $$
-- ...but what about composite nulls like $H_0: \theta\leq\nu$?
+- ...but what about composite nulls like $H_0: \theta\leq 1/2$?
 
 
 ## BRAVO [[@bravo2012]]{.side}
@@ -656,7 +656,7 @@ g(\theta) = \mathbb{E}_\theta[E].$$
 
 ```{=html}
 <div id="gw1"></div>
-<script>GW.line({ fig: "gw1", mu: 0.6, nu: 0.5, n: 10, nLabel: "t", name: "widget1" });</script>
+<script>GW.line({ fig: "gw1", mu: 0.7, nu: 0.5, n: 10, nLabel: "t", name: "widget1" });</script>
 ```
 
 ::: notes
@@ -670,160 +670,19 @@ Demo: drag the blue triangle (mu) and the vermillion circle (nu) along the axis.
 4. There is a t slider too that controls sample size, not sure if I will use it.
 :::
 
-## How to choose your e-variable
+## Which $\nu$ is best? {style="--list-gap: 1.5em;"}
 
-- We saw any $1/2<\nu<\mu$ yields an e-variable
+- Every $\nu \in [1/2, \mu)$ gives an e-variable
 
-- Intuitively, $\nu=1/2$ seems optimal because its expectation reaches 1 within $H_0$ 
+- Judge by *growth rate* [(Kelly betting)]{.side}
+$$\mathbb{E}_\mu[\log E_1] = \mathrm{KL}(P_\mu \,\|\, P_\nu)$$
 
-- Growth $\mathbb{E}_Q[\log E]$: a gambler stopping at $1/\alpha$ needs about $\log(1/\alpha) / \mathbb{E}_Q[\log E]$ rounds [@Breiman1961; @Kelly1956].
-- For a point alternative $\mu > 1/2$, the likelihood ratio against the tie is log-optimal.
-- For a mixture $Q = P_{W_1}$ over the alternative, $p_{W_1}/p_{1/2}$ is log-optimal for $Q$.
-- The tie is already a mixture over the null. It just has one atom.
+- Expected samples to reject $\approx \log(1/\alpha) / \mathrm{KL}$
 
-::: notes
-Timing: 1 minute.
-The last bullet is the setup for the resolution later: in higher dimensions the optimal denominator is a genuine mixture.
-It also explains last year's result: the worst case of the Bayesian audit was the two-way tie for the same reason.
-:::
+- Best: $\nu = 1/2$, the point in $H_0$ closest to $\mu$
 
-## Martingales with an estimator
 
-- Replace the fixed $\mu$ by a predictable estimate $\hat\mu_t$ from $X_1,\dots,X_{t-1}$:
-$$S_t = S_{t-1}\left(\frac{\hat\mu_t}{1/2}X_t + \frac{1-\hat\mu_t}{1/2}(1-X_t)\right).$$
-- Still a test supermartingale for $\theta \le 1/2$, whatever the estimates.
-- This is ALPHA [@alpha_mart], the method used in practice.
-
-::: notes
-Timing: 45 seconds.
-No need to specify ALPHA's truncated shrinkage estimator.
-:::
-
-## Back to plurality: one martingale per pair
-
-::: {.columns}
-::: {.column style="width: 50%; text-align: center;"}
-```{.tikz height="400px"}
-\usetikzlibrary{calc}
-\definecolor{wone}{HTML}{0072B2}   % Okabe-Ito blue       -> W_1
-\definecolor{wzero}{HTML}{D55E00}  % Okabe-Ito vermillion -> W_0
-\begin{tikzpicture}
-  \coordinate (T1) at (4,6.928);
-  \coordinate (T2) at (0,0);
-  \coordinate (T3) at (8,0);
-  \coordinate (G)   at (barycentric cs:T1=1,T2=1,T3=1);
-  \coordinate (M12) at (barycentric cs:T1=1,T2=1);
-  \coordinate (M13) at (barycentric cs:T1=1,T3=1);
-
-  % Shade H_0^{(2)} region: theta1 <= theta2  (T1 side of the M12--T3 line)
-  \fill[nullfill] (T2) -- (T3) -- (M12) -- cycle;
-
-  % W1 contours (prior under the alternative), clipped to H1
-  \begin{scope}
-    \clip (T1) -- (M12) -- (G) -- (M13) -- cycle;
-    \input{contours_h1.tex}
-  \end{scope}
-  \draw[dashed, wone] (M13) -- (G);
-
-  % Truncated Beta marginals along the T1--T2 edge (conditional test on p = theta1/(theta1+theta2))
-  \input{beta_left.tex}
-
-  % Simplex outline
-  \draw[thick] (T1) -- (T2) -- (T3) -- cycle;
-
-  % Boundary theta1 = theta2
-  \draw[line width=1.1pt] (M12) -- (T3);
-  \draw[line width=1.1pt, wzero] (M12) -- (G);
-
-  % Region labels
-  \node at (barycentric cs:T1=0.5,T2=0.2,T3=0.3) {$H_1^{(2)}$};
-  \node at (barycentric cs:T1=0.2,T2=0.5,T3=0.3) {$H_0^{(2)}$};
-
-  % Vertex labels
-  \node[above]       at (T1) {$\theta_1$};
-  \node[below left]  at (T2) {$\theta_2$};
-  \node[below right] at (T3) {$\theta_3$};
-\end{tikzpicture}
-```
-:::
-::: {.column style="width: 50%; text-align: center;"}
-```{.tikz height="400px"}
-\usetikzlibrary{calc}
-\definecolor{wone}{HTML}{0072B2}   % Okabe-Ito blue       -> W_1
-\definecolor{wzero}{HTML}{D55E00}  % Okabe-Ito vermillion -> W_0
-\begin{tikzpicture}
-  \coordinate (T1) at (4,6.928);
-  \coordinate (T2) at (0,0);
-  \coordinate (T3) at (8,0);
-  \coordinate (G)   at (barycentric cs:T1=1,T2=1,T3=1);
-  \coordinate (M12) at (barycentric cs:T1=1,T2=1);
-  \coordinate (M13) at (barycentric cs:T1=1,T3=1);
-
-  % Shade H_1^{(3)} region: theta1 > theta3  (T1 side of the M13--T2 line)
-  \fill[nullfill] (T3) -- (T2) -- (M13) -- cycle;
-
-  % W1 contours (prior under the alternative), clipped to H1
-  \begin{scope}
-    \clip (T1) -- (M12) -- (G) -- (M13) -- cycle;
-    \input{contours_h1.tex}
-  \end{scope}
-  \draw[dashed, wone] (M12) -- (G);
-
-  % Truncated Beta marginals along the T1--T3 edge (conditional test on p = theta1/(theta1+theta3))
-  \input{beta_right.tex}
-
-  % Simplex outline
-  \draw[thick] (T1) -- (T2) -- (T3) -- cycle;
-
-  % Boundary theta1 = theta3
-  \draw[line width=1.1pt] (M13) -- (T2);
-  \draw[line width=1.1pt, wzero] (M13) -- (G);
-
-  % Region labels
-  \node at (barycentric cs:T1=0.5,T2=0.3,T3=0.2) {$H_1^{(3)}$};
-  \node at (barycentric cs:T1=0.2,T2=0.3,T3=0.5) {$H_0^{(3)}$};
-
-  % Vertex labels
-  \node[above]       at (T1) {$\theta_1$};
-  \node[below left]  at (T2) {$\theta_2$};
-  \node[below right] at (T3) {$\theta_3$};
-\end{tikzpicture}
-```
-:::
-:::
-
-- One ALPHA martingale $S^{(j)}_t$ per pair, ignoring ballots for neither candidate.
-- Certify once every pair has crossed $1/\alpha$.
-
-::: notes
-Timing: 45 seconds.
-The figure shows each pair as a projection to a one-dimensional problem with the tie as its null point.
-:::
-
-## It is a minimum
-
-- Certifying when every pair has rejected means thresholding $\min_j E_j$.
-- $\min_j E_j$ is an e-variable for $\Theta_0 = \bigcup_j \Theta_{0j}$: under $\Theta_{0j}$ it is at most $E_j$.
-- The log-optimal e-variable is a likelihood ratio $dQ/dP^*$.
-- **Surely the optimum does not contain a min?**
-
-::: notes
-Timing: 45 seconds.
-Leave it as a question. The answer we can give at a fixed sample size is on the conjecture slide at the end.
-:::
-
-## So work in the original dimension
-
-- Build one e-variable for $\Theta_0$ directly, in $K - 1$ dimensions.
-- Then compare it with the minimum of the pairwise ones.
-
-::: notes
-Timing: 20 seconds. A transition slide.
-:::
-
-# Higher dimensions
-
-<!-- Section budget: 9 minutes, 7 slides, including widgets 2, 3, 4 and 6. -->
+# Things get weird in higher dimensions
 
 ## A likelihood ratio does not just work
 
@@ -834,10 +693,13 @@ Timing: 20 seconds. A transition slide.
 ```
 :::
 ::: {.column style="width: 45%; font-size: 0.7em;"}
-- *More on that later:* this is later.
-- One null point $\boldsymbol\nu$ against the alternative $\boldsymbol\mu$:
-$$g_{\boldsymbol\nu}(\boldsymbol\theta) = \left(\sum_i \theta_i \frac{\mu_i}{\nu_i}\right)^n.$$
-- $g = 1$ is a straight line through $\boldsymbol\nu$. A non-convex null is never on one side of it.
+- here we plot $g(\theta)$: the expected LR under $\theta$
+$$g_{\boldsymbol\nu}(\boldsymbol\theta) = \mathbb{E}_\theta\left[\frac{p_\mu(X)}{p_\nu(X)}\right]$$
+- The dashed contour is $\{\theta: g(\theta) = 1\}$
+
+- $X\sim\mathrm{Multinomial}(n,\theta)$
+
+- E-variable $\implies$ no red in $H_0$!
 
 ```{=html}
 <div id="gw2-panel"></div>
@@ -852,28 +714,22 @@ GW.ternary({
 :::
 ::::
 
-<!-- Fallback PNGs still to capture: nu near each two-way tie, and nu at the centre. -->
-
-::: notes
-Timing: 1.5 minutes.
-Repeat the teaser sentence from "Why it is hard" word for word when this slide opens.
-Monotone likelihood ratio rescued us in one dimension; there is no ordering to rescue us here.
-
-Demo: drag nu (vermillion) along the boundary theta1 = theta2 from the centre to the edge, then try the other piece.
-The dashed g = 1 contour stays a straight line through nu, and part of the hatched null is always red (above 1): the max over the null never drops below 1.
-Then raise n: the region above 1 gets more extreme but the line does not move.
-Compare widget 1: in 1D the line is a point, and the null fits on one side.
-:::
 
 ## The resolution: mixtures over the null
 
 ::: {.columns}
-::: {.column width="50%"}
-- Denominator $p_W = \int p_{\boldsymbol\theta}\, dW(\boldsymbol\theta)$ for a mixing measure $W$ on $\Theta_0$.
-- The *reverse information projection* $P^*$ minimises $\mathrm{KL}(Q \,\|\, P_W)$ over such mixtures [@safetesting; @Lardy2024Reverse].
-- $E^* = dQ/dP^*$ is the log-optimal e-variable [@safetesting; @Larsson2025NumeraireRipr].
+::: {.column width="70%"}
+- Let $Q$ be *any* distribution for the numerator
+  * generalises the choice of $P_\mu$
+  * e.g. a marginal distribution w/ prior $W_1$ on $H_1$
+- @safetesting:
+  * there exists a prior $W^*$ on $H_0$ such that:
+  * writing $P^*=P_{W^*}$: $q(X) / p^*(X)$ is an e-variable
+  * the only MLR e-variable with $Q$ in the numerator
+  * $P^*$ is *essentially unique* [($W^*$ may not be)]{.side}
 :::
-::: {.column width="50%"}
+::: {.column width="30%"}
+::: {style="position: relative; top: 100px;"}
 ```{.tikz width="100%"}
 \usetikzlibrary{calc}
 \definecolor{wone}{HTML}{0072B2}   % Okabe-Ito blue       -> W_1
@@ -914,21 +770,31 @@ Compare widget 1: in 1D the line is a point, and the null fits on one side.
 ```
 :::
 :::
-
-::: notes
-Timing: 1 minute.
-This is where the Bayesian and the martingale stories meet: E* is a Bayes factor whose null prior is the projection.
 :::
 
-## Adding an atom moves the region above 1
+
+## Reverse Information Projection [(RIPr)]{.side}
+
+$W^*$ minimises the divergence of $P^*$ from $Q$ among all priors $W$ on $H_0$:
+$$\mathrm{KL}(Q\,\|\,P^*) = \inf_W\, \mathrm{KL}(Q\,\|\,P_W)$$
+
+- $q(X)/p^*(X)$ is log-optimal under $Q$
+  * Best growth $\implies$ maximises KL among e-variables?
+  * earlier, $P_\nu=P_{1/2}$ was the RIPr of $P_\mu$ onto $H_0$
+- Finding $W^*$ is a convex optimisation problem (KL convex)
+  * Numerical methods should do well...?
+
+## Adding one more point
 
 :::: {.columns}
-::: {.column width="55%"}
+::: {.column width="60%"}
 ```{=html}
 <div id="gw3-fig"></div>
 ```
 :::
-::: {.column style="width: 45%;"}
+::: {.column style="width: 40%;"}
+- Two "atoms" do quite well
+- $W = \omega_1 \delta_{\nu_1} + \omega_2 \delta_{\nu_2}$
 ```{=html}
 <div id="gw3-panel"></div>
 <script>
@@ -944,29 +810,27 @@ GW.ternary({
 :::
 ::::
 
-<!-- Fallback PNGs still to capture: one atom; two atoms by hand; the fitted solution. -->
 
-::: notes
-Timing: 2 minutes.
-With two atoms the g = 1 contour is no longer a line, and it can bend around the corner of the null.
+## Approximating the RIPr
 
-Controls: click in the null to add an atom (weight 2/(k+2), the Frank-Wolfe open-loop step size; say so).
-Scroll over an atom to change its weight, drag to move it, double-click to remove it.
-"Frank-Wolfe step" adds an atom where g_W is largest over the null: the oracle.
-"Reweight" is one EM weight update with the atoms fixed; it cannot increase KL.
 
-Demo: start from the single atom. Click an atom near the other two-way tie; the region above 1 inside the null shrinks.
-Scroll the weights until the grid max approaches 1. Then tick "show fitted RIPr" to compare with the fitted solution.
+:::{style="margin-top: 100px;"}
+Minimising $\mathrm{KL}(Q \,\|\, P_W)$ is maximising the expected log-likelihood
+$$\mathbb{E}_Q\left[\log\, p_{W}(X)\right]$$
 :::
+- Like fitting a mixture model to $Q$...
+  * ...but with components constrained to $H_0$
 
-## How do you find the RIPr?
+## The algorithms
 
-- Minimising $\mathrm{KL}(Q \,\|\, P_W)$ over $W$ is fitting a mixture model to $Q$, with atoms constrained to $\Theta_0$.
-- Convex in the weights, not in the atoms. The null is not convex either.
-- Three algorithms:
-  - Frank–Wolfe [@FrankWolfe1956; @Jaggi2013; @TuynmanMathieu2026] and Li–Barron [@LiBarron1999]: add one atom at a time.
-  - Expectation–maximisation: move and reweight a fixed set of atoms. TODO: add Dempster, Laird and Rubin (1977) to bibliography.bib from the manuscript.
-  - A hybrid: Frank–Wolfe steps interleaved with EM sweeps.
+- "Oracles": adding one atom at a time
+  - Li--Barron [@LiBarron1999]
+  - Frank--Wolfe [@FrankWolfe1956; @Jaggi2013]
+    * Recently applied to this problem by [@TuynmanMathieu2026]
+- Expectation--maximisation [@DempsterLairdRubin1977]
+  * no new atoms added
+  * move and reweight 
+- I find a hybrid (FW + EM) approach works well
 
 ::: notes
 Timing: 1 minute.
@@ -992,26 +856,25 @@ The oracle, which picks where the next atom goes, is a global non-convex search.
 </script>
 ```
 
-<!-- Fallback still to record: an MP4 or GIF of the playback. -->
 
-::: notes
-Timing: 2 minutes.
-Frank-Wolfe attacks the bound directly but converges slowly. EM is fast but cannot add atoms. The hybrid takes both.
+## Close is not enough {style="--list-gap: 2em"}
 
-Traces are real ripr runs (slides/data/make_traces.R): n = 10, mu = (0.45, 0.35, 0.20), 2 s of step time per method.
-Time is ripr's step clock, excluding the gap sweeps. Speed is a multiple of real time: at the default 0.1x the 2 s runs play in 20 s.
-Wall-clock sync is the honest comparison and matches the manuscript's figures; iteration sync is easier to follow.
-The diamonds are the certified growth KL - log U at the end of each run.
-
-Default start: ripr's default init already puts one atom in each piece, so EM does very well here.
+:::{style="margin-top: 100px;"}
+If $g_W(\theta) > 1$ anywhere in the null, $q(X)/p_W(X)$ is **not an e-variable**.
 :::
 
-## Close is not enough
+- $q(X)/p^*(X)$ is the **only** e-variable of ratio form
+  * $\implies$ approximations do not yield e-variables
 
-- If $g_W > 1$ anywhere in the null, $dQ/dP_W$ is **not an e-variable at all**.
-- An approximate projection, however close, gives an unfair bet [@safetesting].
-- Fix: divide by the worst case, $G_W = \sup_{\boldsymbol\theta \in \Theta_0} g_W(\boldsymbol\theta)$.
-$$E_W = \frac{1}{G_W}\frac{dQ}{dP_W} \quad\text{is an e-variable, and}\quad \mathrm{KL}(Q\,\|\,P_W) - \log G_W \le \mathbb{E}_Q[\log E^*] \le \mathrm{KL}(Q\,\|\,P_W).$$
+
+## Fix: {style="--list-gap: 1.5em"}
+
+- Just divide by the worst case $G_W = \sup_{\theta} g_W(\theta)$
+
+- $E_W = \frac{1}{G_W}\frac{dQ}{dP_W}$ is an e-variable
+- We get a free bound on the optimal growth:
+$$\mathrm{KL}(Q\,\|\,P_W) - \log G_W \le \mathbb{E}_Q[\log E^*] \le \mathrm{KL}(Q\,\|\,P_W)$$
+- An interval with width $\log G_W$!
 
 ::: notes
 Timing: 1 minute. This is the central idea of the manuscript; slow down here.
@@ -1042,47 +905,29 @@ GW.ternary({
 :::
 ::::
 
-<!-- Fallback PNGs still to capture: C = 1, C = grid max with one atom, C = grid max with two atoms. -->
 
-::: notes
-Timing: 1.5 minutes.
-Validity is decoupled from the optimiser: any fit, stopped anywhere, gives a real e-variable, and log G_W measures what it cost.
+## Rigorous bounds for $G_W$
 
-The colour now shows g_W / C and the dashed contour sits at g_W = C. The "max r(c)" tick is the trivial end:
-dividing by it always gives a valid e-variable that never exceeds 1, valid and useless.
+- Finding $G_W = \sup_{\theta} g_W(\theta)$ is a hard problem
+  * Optimising may not find the global max
+- We need a rigorous, global upper bound $U_W\geq G_W$
+- Branch-and-bound algorithms:
+  * divide $H_0$ into small regions
+  * bound $g_W$ over the smaller pieces
+  * smaller piece $\implies$ smaller bound
+ 
+## Multinomial branch-and-bound
 
-Demo: with one atom, drag C up (or press "C = grid max") until the contour clears the null, and read off the growth cost.
-Then add the second atom: the C needed drops towards 1, and the interval narrows.
-:::
+- $g_W(\theta)$ is a polynomial in $\theta$
+  * "Bernstein polynomials"
+  * Coefficients are the realisations of $q(X)/p_W(X)$
 
-## Bounding the worst case
+- Bernstein branch-and-bound [@Leroy2012]
+  * global minimisation for polynomials
 
-- A search over $\Theta_0$ only finds points, so it can only under-report $G_W$.
-- An upper bound must cover every point: branch and bound over the null.
-- For multinomials, $g_W$ is already a Bernstein polynomial whose coefficients are the ratios $r(\boldsymbol c)$. TODO: cite Garloff (1985) and Leroy (2012); add both to bibliography.bib from the manuscript.
-- Implemented in the R package ripr.
+## BNB in action
 
-<!--
-FIGURE TO BUILD: bernstein-1d (static, R).
-The K = 2 case of the observation, so it fits on one slide.
-Take n = 6, mu = 0.65 and a deliberately poor two-atom null mixture on [0, 1/2].
-Plot g_W(theta) on [0, 1] (the null band hatched as in widget 1).
-Overlay the control polygon: points (c/n, r(c)) for c = 0..n joined by thin
-grey lines. Shade the band between min r and max r lightly.
-Annotate: "g_W lies in the hull of its control points" and "subdividing
-tightens the hull". A second panel shows the control polygon after one
-subdivision at theta = 1/2 (de Casteljau), with its tighter band.
-Pair it with manuscript Figure 9 (cost of rigour) if there is room; otherwise
-keep Figure 9 for the backup slides.
--->
-::: {.placeholder}
-bernstein-1d: g_W with its Bernstein control polygon, before and after one subdivision. Spec in the comment above.
-:::
 
-::: notes
-Timing: 1 minute.
-The only rigorous step is the bound, and it is needed once, at the end; cheap searches are enough inside the fitting loop.
-:::
 
 ## A prior over the alternative
 
@@ -1185,12 +1030,6 @@ Point-optimal tests commit to a point of the alternative; log-optimality commits
 # Progress, again
 
 ## Where the thesis stands
-
-<!--
-Repeat the "Now" table, styled identically, with the rows touched this year
-highlighted (chapters 1, 2, 3 and 6). Use fragments to highlight one row at a
-time if you want to talk through them.
--->
 
 ::: {.placeholder}
 The "Now" progress table again, with this year's changes highlighted. See the comment above.
@@ -1300,6 +1139,116 @@ Timing: 45 seconds. End on the question, then stop.
 
 # Backup slides {visibility="uncounted"}
 
+## Martingales for plurality: one per pair {visibility="uncounted"}
+
+::: {.columns}
+::: {.column style="width: 40%; text-align: center;"}
+```{.tikz height="300px"}
+\usetikzlibrary{calc}
+\definecolor{wone}{HTML}{0072B2}   % Okabe-Ito blue       -> W_1
+\definecolor{wzero}{HTML}{D55E00}  % Okabe-Ito vermillion -> W_0
+\begin{tikzpicture}
+  \coordinate (T1) at (4,6.928);
+  \coordinate (T2) at (0,0);
+  \coordinate (T3) at (8,0);
+  \coordinate (G)   at (barycentric cs:T1=1,T2=1,T3=1);
+  \coordinate (M12) at (barycentric cs:T1=1,T2=1);
+  \coordinate (M13) at (barycentric cs:T1=1,T3=1);
+
+  % Shade H_0^{(2)} region: theta1 <= theta2  (T1 side of the M12--T3 line)
+  \fill[nullfill] (T2) -- (T3) -- (M12) -- cycle;
+
+  % W1 contours (prior under the alternative), clipped to H1
+  \begin{scope}
+    \clip (T1) -- (M12) -- (G) -- (M13) -- cycle;
+    \input{contours_h1.tex}
+  \end{scope}
+  \draw[dashed, wone] (M13) -- (G);
+
+  % Truncated Beta marginals along the T1--T2 edge (conditional test on p = theta1/(theta1+theta2))
+  \input{beta_left.tex}
+
+  % Simplex outline
+  \draw[thick] (T1) -- (T2) -- (T3) -- cycle;
+
+  % Boundary theta1 = theta2
+  \draw[line width=1.1pt] (M12) -- (T3);
+  \draw[line width=1.1pt, wzero] (M12) -- (G);
+
+  % Region labels
+  \node at (barycentric cs:T1=0.5,T2=0.2,T3=0.3) {$H_1^{(2)}$};
+  \node at (barycentric cs:T1=0.2,T2=0.5,T3=0.3) {$H_0^{(2)}$};
+
+  % Vertex labels
+  \node[above]       at (T1) {$\theta_1$};
+  \node[below left]  at (T2) {$\theta_2$};
+  \node[below right] at (T3) {$\theta_3$};
+\end{tikzpicture}
+```
+:::
+::: {.column style="width: 40%; text-align: center;"}
+```{.tikz height="300px"}
+\usetikzlibrary{calc}
+\definecolor{wone}{HTML}{0072B2}   % Okabe-Ito blue       -> W_1
+\definecolor{wzero}{HTML}{D55E00}  % Okabe-Ito vermillion -> W_0
+\begin{tikzpicture}
+  \coordinate (T1) at (4,6.928);
+  \coordinate (T2) at (0,0);
+  \coordinate (T3) at (8,0);
+  \coordinate (G)   at (barycentric cs:T1=1,T2=1,T3=1);
+  \coordinate (M12) at (barycentric cs:T1=1,T2=1);
+  \coordinate (M13) at (barycentric cs:T1=1,T3=1);
+
+  % Shade H_1^{(3)} region: theta1 > theta3  (T1 side of the M13--T2 line)
+  \fill[nullfill] (T3) -- (T2) -- (M13) -- cycle;
+
+  % W1 contours (prior under the alternative), clipped to H1
+  \begin{scope}
+    \clip (T1) -- (M12) -- (G) -- (M13) -- cycle;
+    \input{contours_h1.tex}
+  \end{scope}
+  \draw[dashed, wone] (M12) -- (G);
+
+  % Truncated Beta marginals along the T1--T3 edge (conditional test on p = theta1/(theta1+theta3))
+  \input{beta_right.tex}
+
+  % Simplex outline
+  \draw[thick] (T1) -- (T2) -- (T3) -- cycle;
+
+  % Boundary theta1 = theta3
+  \draw[line width=1.1pt] (M13) -- (T2);
+  \draw[line width=1.1pt, wzero] (M13) -- (G);
+
+  % Region labels
+  \node at (barycentric cs:T1=0.5,T2=0.3,T3=0.2) {$H_1^{(3)}$};
+  \node at (barycentric cs:T1=0.2,T2=0.3,T3=0.5) {$H_0^{(3)}$};
+
+  % Vertex labels
+  \node[above]       at (T1) {$\theta_1$};
+  \node[below left]  at (T2) {$\theta_2$};
+  \node[below right] at (T3) {$\theta_3$};
+\end{tikzpicture}
+```
+:::
+:::
+
+- One martingale $S^{(j)}_t$ per pair, ignoring irrelevant ballots
+- Certify once every pair has crossed $1/\alpha$.
+
+::: notes
+Timing: 45 seconds.
+The figure shows each pair as a projection to a one-dimensional problem with the tie as its null point.
+:::
+
+
+## It is a minimum {visibility="uncounted"}
+
+- Certifying when every pair has rejected means thresholding $\min_j E_j$.
+- $\min_j E_j$ is an e-variable for $\Theta_0 = \bigcup_j \Theta_{0j}$: under $\Theta_{0j}$ it is at most $E_j$.
+- The log-optimal e-variable is a likelihood ratio $dQ/dP^*$.
+- **Surely the optimum does not contain a min?**
+
+
 ## Why sampling with replacement? {visibility="uncounted"}
 
 - A mathematical device, not a physical requirement: reuse ballots already drawn whenever the model asks for a repeat.
@@ -1309,27 +1258,20 @@ Timing: 45 seconds. End on the question, then stop.
 slides/fig/alpha_sampling_effort.svg (recipe A).
 :::
 
+
 ## Is any Bayes factor an e-process for $K > 2$? {visibility="uncounted"}
 
 - For $K = 2$ the projection is the tie at every $n$, so the Bayes factor is a test martingale.
 - For $K > 2$ preliminary calculations show the projection depends on $n$.
 - Conjecture: no Bayes factor of this form is an e-process. Not yet proved.
 
-## How does branch and bound scale? {visibility="uncounted"}
 
-::: {.fetch}
-Manuscript Figure 10 (nodes and seconds against tolerance). Optionally Figure 9 alongside.
-:::
+## How does this differ from @TuynmanMathieu2026? {visibility="uncounted"}
 
-## Does interleaving pay? {visibility="uncounted"}
-
-::: {.fetch}
-Manuscript Figure 8 (bounded growth against EM sweep count m).
-:::
-
-## How does this differ from Tuynman and Mathieu (2026)? {visibility="uncounted"}
-
-- They fit the projection with Frank–Wolfe and stop when iterates stop changing [@TuynmanMathieu2026].
-- Their guarantees are for the exact projection.
-- Here the final iterate is accepted as suboptimal, and the bound restores validity and measures the gap.
-- The Gaussian example goes beyond finitely supported distributions.
+- They fit the projection with Frank–Wolfe and stop when iterates stop changing
+- No guarantees
+- I accept the final iterate is as suboptimal
+  * Restore validity via rigorous bounds
+  * measure the gap and growth attained
+  * Compute an interval that contains the log-optimal growth
+- My Gaussian example goes beyond finite distributions
