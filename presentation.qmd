@@ -45,21 +45,8 @@ output-file: index.html
 - An *election audit* checks it against the ground-truth *audit trail*
   * (e.g. original paper ballots)
   * If the audit concludes it is correct $\longrightarrow$ *Certify!*
-  * Otherwise, something went wrong $\longrightarrow$ *recount!*
+  * Otherwise $\longrightarrow$ *recount!*
 
-::: notes
-- Timing: 1 minute.
-- when: after the election
-  * after all votes have been submitted
-  * and after they have all been counted
-  * when reported outcome is available
-- why:
-  * check that it is correct---outcome may come from electronic systems with bugs
-  * want to verify with high confidence without redoing the whole count by hand (expensive)
-- (NEXT) I study ballot polling audits, that get minimal information and are easier
-  * Only know who won
-  * And have access to the ground-truth ballots
-:::
 
 ## *Risk-limiting* audits {style="--list-gap: 1.5em"}
 
@@ -86,9 +73,9 @@ output-file: index.html
 
 - $H_0$: the reported outcome is incorrect
   * reject $H_0\longrightarrow$ certify
+  * accept $H_0\longrightarrow$ recount
 
 - $H_1$: The reported outcome is correct
-  * accept $H_0\longrightarrow$ recount
   * recounts are expensive!! 
   * some audits never accept $H_0$: they are "power-one"
 
@@ -121,15 +108,14 @@ output-file: index.html
 
 # Setting
 
-## Plurality elections, with-replacement {style="--list-gap: 1.5em"}
+## Plurality elections, with replacement {style="--list-gap: 1.5em"}
 
 - Plurality
   * Voters select only one candidate
   * Whoever gets the most votes wins
 
 - Sampling with replacement
-  * Observations are i.i.d.
-  * $X_t \overset{d}{=} X_{t'}$
+  * Observations are i.i.d. $X_t \overset{d}{=} X_{t'}$
   * Not used in practice $\not\Rightarrow$ impractical!
 
 ## $K$-candidate plurality
@@ -147,7 +133,7 @@ output-file: index.html
 
 ## Two candidates (the easy case)
 
-- Observations are $X_t \sim \mathrm{Bernoulli}(\theta)$.
+- Observations are $X_t \sim \mathrm{Bernoulli}(\theta_1)$.
 - $H_0: \theta_1 \le 1/2$ against $H_1: \theta_1 > 1/2$.
 - Very well-studied:
   * BRAVO [@bravo2012]
@@ -421,13 +407,14 @@ output-file: index.html
 :::
 
 
-## But Type I error control matters, {style="--list-gap: 1.5em"}
+## But Type I error control matters, {style="--list-gap: 2em"}
 
 and unfortunately, choosing $\kappa$ to control Type I error at level $\alpha$ is hard.
 
 - We want to select $\kappa$ such that $$\mathrm{P}_\theta\big(B_t>\kappa\text{ for some }t\big)\leq\alpha\text{ for all }\theta\in H_0.$$
 - Later we will see that for some choices of $W_1, W_0$ this is easy.
-- For others it will be impossible.
+
+- For others, I conjecture it is impossible.
 
 
 # Now that we know what it's all about...
@@ -522,9 +509,10 @@ The worst case being the two-way tie will come back: in the K = 2 likelihood rat
 
 ## My findings {style="--list-gap: 1.5em"}
 
-- The "worst-case null" is always the two-way tie (50/50 split, rest zero)
-  * Proven for a symmetric Dirichlet priors
-  * Otherwise somewhere on the boundary for a wider class
+- The "worst-case null" is the two-way tie (50/50 split, rest zero)
+  * Proven for symmetric Dirichlet priors
+
+- Worst-case is somewhere on the boundary for a wider class
 
 - It compares quite similarly to the (recalibrated) state of the art
   * State of the art threshold can be ~halved with $T=10,000$
@@ -620,7 +608,7 @@ $$
 
 ## BRAVO [[@bravo2012]]{.side}
 
-- Set $\mu$ to be the reported winners share ($>1/2$)
+- Set $\mu$ to be the reported winner's share ($>1/2$)
 
 - Set $\nu = 1/2$
 
@@ -710,7 +698,7 @@ GW.ternary({
   * e.g. a marginal distribution w/ prior $W_1$ on $H_1$
 - @safetesting:
   * there exists a prior $W^*$ on $H_0$ such that:
-  * writing $P^*=P_{W^*}$: $q(X) / p^*(X)$ is an e-variable
+  * $q(X) / p^*(X)$ is an e-variable [($P^*=P_{W^*}$)]{.side}
   * the only MLR e-variable with $Q$ in the numerator
   * $P^*$ is *essentially unique* [($W^*$ may not be)]{.side}
 :::
@@ -765,7 +753,7 @@ $W^*$ minimises the divergence of $P^*$ from $Q$ among all priors $W$ on $H_0$:
 $$\mathrm{KL}(Q\,\|\,P^*) = \inf_W\, \mathrm{KL}(Q\,\|\,P_W)$$
 
 - $q(X)/p^*(X)$ is log-optimal under $Q$
-  * Best growth $\implies$ maximises KL among e-variables?
+  * $\mathbb{E}_Q[\log E^*] = \mathrm{KL}(Q\,\|\, P^*)$ [(optimal growth is the minimal divergence)]{.side}
   * earlier, $P_\nu=P_{1/2}$ was the RIPr of $P_\mu$ onto $H_0$
 - Finding $W^*$ is a convex optimisation problem (KL convex)
   * Numerical methods should do well...?
@@ -814,7 +802,7 @@ $$\mathbb{E}_Q\left[\log\, p_{W}(X)\right]$$
 - "Oracles": adding one atom at a time
   - Li--Barron [@LiBarron1999]
   - Frank--Wolfe [@FrankWolfe1956; @Jaggi2013]
-    * Recently applied to this problem by [@TuynmanMathieu2026]
+    * Recently applied to this problem by @TuynmanMathieu2026
 - Expectation--maximisation [@DempsterLairdRubin1977]
   * no new atoms added
   * move and reweight 
@@ -1056,7 +1044,7 @@ All in an open-source R package `ripr`
 
 - For $K = 3$ and a point alternative
   * two atoms suffice in every case I have run
-- Conjecture: $K - 1$ atoms suffice point alternatives
+- Conjecture: $K - 1$ atoms suffice for point alternatives
   * Is there an analytic form?
 - What can we say about mixture alternatives?
 
@@ -1291,7 +1279,7 @@ The figure shows each pair as a projection to a one-dimensional problem with the
 - My Gaussian example goes beyond finite distributions
 
 
-## A prior over the alternative
+## A prior over the alternative {visibility="uncounted"}
 
 :::: {.columns}
 ::: {.column width="55%"}
