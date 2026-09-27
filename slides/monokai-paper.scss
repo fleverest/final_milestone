@@ -22,10 +22,23 @@ $code-block-bg: $rule;
 $code-bg: $rule;
 
 /*-- scss:rules --*/
-.reveal strong { color: $mk-orange; }
-.reveal .slide-number, .reveal .slide-menu-button { color: $dim; }
-.reveal .progress { color: $mk-purple; }
-.reveal table th, .reveal table td { border-color: $rule; }
+.reveal strong {
+  color: $mk-orange;
+}
+
+.reveal .slide-number,
+.reveal .slide-menu-button {
+  color: $dim;
+}
+
+.reveal .progress {
+  color: $mk-purple;
+}
+
+.reveal table th,
+.reveal table td {
+  border-color: $rule;
+}
 
 // List spacing: a clear gap between top-level bullets, nested ones kept close.
 // (A blank line between bullets makes Pandoc wrap them in paragraphs, which
@@ -35,9 +48,17 @@ $code-bg: $rule;
 // first and 0.1em between the rest. The :nth-child(n) is a no-op that raises
 // specificity above Quarto's `.reveal .slide ul li`.
 // Per slide: ## Title {style="--list-gap: 1.4em"}
-.reveal .slide :is(ul, ol) > li:nth-child(n) { margin-top: var(--list-gap, 0.8em); }
-.reveal .slide li :is(ul, ol) > li:nth-child(n) { margin-top: 0.4em; }
-.reveal .slide li :is(ul, ol) > li + li:nth-child(n) { margin-top: 0.1em; }
+.reveal .slide :is(ul, ol)>li:nth-child(n) {
+  margin-top: var(--list-gap, 0.8em);
+}
+
+.reveal .slide li :is(ul, ol)>li:nth-child(n) {
+  margin-top: 0.4em;
+}
+
+.reveal .slide li :is(ul, ol)>li+li:nth-child(n) {
+  margin-top: 0.1em;
+}
 
 // Strike-through fragment: [old text]{.fragment .strikeout} draws a line through
 // the text from left to right instead of fading it in. (Not `.strike`: that is
@@ -45,17 +66,56 @@ $code-bg: $rule;
 // [new text]{.fragment .after-strike} on the same fragment-index to fade the
 // replacement in once the line has finished.
 .reveal .slides section .fragment.strikeout {
-  opacity: 1; visibility: inherit;
-  display: inline-block; position: relative;
+  opacity: 1;
+  visibility: inherit;
+  display: inline-block;
+  position: relative;
 }
+
 .reveal .slides section .fragment.strikeout::after {
-  content: ""; position: absolute; left: -0.05em; right: -0.05em; top: 52%;
-  height: 0.08em; background: currentColor;
-  transform: scaleX(0); transform-origin: left center;
+  content: "";
+  position: absolute;
+  left: -0.05em;
+  right: -0.05em;
+  top: 52%;
+  height: 0.08em;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
   transition: transform 0.6s ease-in-out;
 }
-.reveal .slides section .fragment.strikeout.visible::after { transform: scaleX(1); }
-.reveal .slides section .fragment.after-strike.visible { transition-delay: 0.6s; }
+
+.reveal .slides section .fragment.strikeout.visible::after {
+  transform: scaleX(1);
+}
+
+.reveal .slides section .fragment.after-strike.visible {
+  transition-delay: 0.6s;
+}
 
 // Side note: [(e.g. original paper ballots)]{.side} -- smaller and grey.
-.reveal .side { font-size: 0.75em; color: $dim; margin-left: 0.3em; }
+.reveal .side {
+  font-size: 0.75em;
+  color: $dim;
+  margin-left: 0.3em;
+}
+
+// Each letter is wrapped in its own span, with --i set to its position, by
+// slides/effects.js, so the bob ripples along the text.
+.wave span {
+  display: inline-block;
+  animation: bob 1s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.1s);
+}
+
+@keyframes bob {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}

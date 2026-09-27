@@ -34,6 +34,7 @@ format:
         <link rel="stylesheet" href="slides/interactive/gw.css">
         <script src="slides/interactive/d3.min.js"></script>
         <script src="slides/interactive/gw.js"></script>
+        <script src="slides/effects.js"></script>
         <script src="slides/data/gw_data.js"></script>
     include-after-body: suprema-anim.html
 tikz:
@@ -821,6 +822,8 @@ $$\mathbb{E}_Q\left[\log\, p_{W}(X)\right]$$
 - Like fitting a mixture model to $Q$...
   * ...but with components constrained to $H_0$
 
+# [ALE: [testing under the influence with]{.wave} Approximately Log-optimal E-variables]{style="font-size: 45pt"}
+
 ## The algorithms
 
 - "Oracles": adding one atom at a time
@@ -914,12 +917,12 @@ GW.ternary({
 - Branch-and-bound algorithms:
   * divide $H_0$ into small regions
   * bound $g_W$ over the smaller pieces
-  * smaller piece $\implies$ smaller bound
+  * smaller piece $\implies$ tighter bound
  
-## Multinomial branch-and-bound
+## Multinomial branch-and-bound {style="--list-gap: 2em"}
 
 - $g_W(\theta)$ is a polynomial in $\theta$
-  * "Bernstein polynomials"
+  * "Bernstein basis"
   * Coefficients are the realisations of $q(X)/p_W(X)$
 
 - Bernstein branch-and-bound [@Leroy2012]
@@ -927,105 +930,127 @@ GW.ternary({
 
 ## BNB in action
 
-
-
-## A prior over the alternative
-
 :::: {.columns}
-::: {.column width="55%"}
+::: {.column width="50%"}
 ```{=html}
-<div id="gw5-fig"></div>
+<div id="gwb-fig"></div>
+<div id="gwb-panel"></div>
 ```
 :::
-::: {.column style="width: 45%; font-size: 0.7em;"}
-- Replace the point $\boldsymbol\mu$ by a mixture $Q = P_{W_1}$.
-- The rescaled $E_W$ is then a Bayes factor with numerator prior $W_1$, divided by $G_W$.
-- This closes the loop with the Bayesian audit: the denominator prior is chosen, not guessed.
-
+::: {.column width="50%"}
 ```{=html}
-<div id="gw5-panel"></div>
+<div id="gwb-bnb"></div>
 <script>
-(function () {
-  var nul = { atoms: [[0.40, 0.40, 0.20], [0.40, 0.20, 0.40]], weights: [0.5, 0.5] };
-  var twoPoint = { label: "two-point alternative", nul: nul,
-    alt: { atoms: [[0.50, 0.30, 0.20], [0.45, 0.20, 0.35]], weights: [0.5, 0.5] } };
-  var prior = { label: "prior sample", nul: nul, alt: GW.priorSample(50, 1) };
-  GW.ternary({
-    fig: "gw5-fig", panel: "gw5-panel", name: "widget5", n: 10, nMax: 12,
-    alt: twoPoint.alt, nul: nul,
-    editNull: true, editAlt: true, buttons: ["fw", "reweight"],
-    presets: [twoPoint, prior]
-  });
-})();
+GW.certify({
+  fig: "gwb-bnb",
+  editor: {
+    fig: "gwb-fig", panel: "gwb-panel", name: "bnb", n: 10, nMax: 12,
+    alt: { atoms: [[0.45, 0.35, 0.20]], weights: [1] },
+    nul: window.GW_DATA && window.GW_DATA.fitted
+      ? { atoms: GW_DATA.fitted.atoms, weights: GW_DATA.fitted.weights }
+      : { atoms: [[0.40, 0.40, 0.20]], weights: [1] },
+    editNull: true, buttons: ["fw", "reweight"]
+  }
+});
 </script>
 ```
 :::
 ::::
 
-<!-- OPTIONAL slide: cut if the talk runs long. Fallback PNGs still to capture: each preset before and after fitting. -->
 
-::: notes
-Timing: 1.5 minutes, or cut.
-Use the tabs to choose which mixture clicks, scrolling and double-clicks act on; alternative atoms are blue and stay in Theta1.
-"prior sample" is 50 draws from Dirichlet(1, 1, 1) truncated to Theta1, shown as faint dots.
-Press Frank-Wolfe and reweight a few times: expect the fitted null to need more atoms than K - 1.
+
+## ALE contributions
+
+:::{style="font-size: 25pt;"}
+1. A recipe that turns any approximate projection into an e-variable
+   * Also yields a bound on optimal growth
+
+2. Empirical comparison of Li--Barron, Frank--Wolfe and EM
+   * compared by growth attained and interval width
+   * taking into account computational resources
+
+3. Rigorous bounds on $G_W$
+   * Bernstein enclosures for multinomial
+   * **Lipschitz for Gaussian location nulls?**
+
+All in an open-source R package `ripr`
 :::
 
-# The ALE manuscript
 
-<!-- Section budget: 3 minutes, 3 slides. -->
+## Findings {style="--list-gap: 2em;"}
 
-## ALE: testing under the influence with approximately log-optimal e-variables
+- Point alternatives have *simple* projections (for multinomial)
+  * Few atoms suffice
+- Mixture alternatives are hard
+  * Hybrid "outperforms" other methods for $K>5$
+  * Better growth achieved in limited CPU time
 
-With David and Damjan. arXiv target: November 2026.
 
-1. A recipe that turns any approximate projection into an e-variable, with its growth bracketed.
-2. A comparison of Li–Barron, Frank–Wolfe, EM and a new hybrid, on growth against wall-clock time.
-3. Rigorous branch-and-bound bounds on $G_W$: Bernstein enclosures for multinomials, and a finiteness criterion for Gaussian location nulls.
-
-- Open-source R package ripr.
-
-::: notes
-Timing: 1 minute.
-Say that the Gaussian bound is still in progress; the panel will respect a flagged gap.
-:::
-
-## Results
-
-::: {.fetch}
-Manuscript Figure 4 (growth against wall-clock time, point alternative), re-saved at slide size.
-Optionally pair with a condensed Table 3: best bounded growth per method family for K = 3 to 6, n = 10 and 20.
-:::
-
-- On the point alternative, the best run of every family reaches the same bounded growth to two decimals in seven of eight scenarios.
-- They differ in how long they take. TODO: one sentence on which family wins on time, from the final cluster run.
-- Sanity check at $K = 2$: every method recovers the tie to within $10^{-11}$.
-
-::: notes
-Timing: 1 minute.
-Check the first bullet against the final run before the talk; it is quoted from the 30-second-budget draft.
-:::
-
-## More general than election audits
+## Useful beyond election audits
 
 ::: {.columns}
 ::: {.column width="50%"}
-- Any null that is a finite union of convex polyhedra: conjunctions and disjunctions of linear constraints.
-- Multinomial and Gaussian location models.
-- Any fitting heuristic, stopped anywhere.
-- Instant-runoff audits have nulls of this shape too [@blom2019raire].
+- Finite unions of **convex polyhedra**
+  * linear constraints
+
+- Other families within reach
 :::
 ::: {.column width="50%"}
-::: {.fetch}
-Manuscript Figure 2 (planar Gaussian polyhedral null, unbounded), re-saved at slide size.
-:::
+```{.tikz width="100%"}
+\begin{tikzpicture}[x=1cm, y=1cm]
+  \begin{scope}
+    \clip (-3.4,-3.55) rectangle (4.95,3.5);
+    % region = conv(V) + cone(r1, r2); the fill fades out eastward and the
+    % boundary rays end in arrowheads, so the unboundedness stays visible
+    \fill[regfill]
+      (3.9,3.147) -- (0.5,1.9) -- (-0.65,1.1) -- (-1.1,0.1)
+      -- (-0.9,-1.0) -- (0.15,-2.05) -- (3.9,-3.234) -- cycle;
+    \fill[regfill, path fading=east]
+      (3.9,3.147) -- (4.9,3.513) -- (4.9,-3.55) -- (3.9,-3.234) -- cycle;
+    \draw[regborder]
+      (0.5,1.9) -- (-0.65,1.1) -- (-1.1,0.1)
+      -- (-0.9,-1.0) -- (0.15,-2.05);
+    \draw[regborder, ->] (0.5,1.9) -- (4.55,3.385);
+    \draw[regborder, ->] (0.15,-2.05) -- (4.55,-3.44);
+    % the generators of the recession cone, labelled on the unbounded edges
+    \node[lbl, regcol!70!black] at (2.75,3.05) {$\bm{u}_1$};
+    \node[lbl, regcol!70!black] at (2.75,-3.2) {$\bm{u}_2$};
+    % vertices
+    \foreach \p in {(0.5,1.9), (-0.65,1.1), (-1.1,0.1), (-0.9,-1.0),
+                    (0.15,-2.05)}
+      \fill[regcol!80!black] \p circle (1.1pt);
+    \node[lbl] at (1.0,1.5) {$R_k$};
+  \end{scope}
+  % axes
+  \draw[axisline] (-3.4,-3.55) -- (5.25,-3.55) node[right, lbl] {$\theta_1$};
+  \foreach \t in {-3,...,4}
+    \draw[black!60] (\t,-3.55) -- (\t,-3.42)
+      node[at={(\t,-3.62)}, below, font=\tiny, black!70] {$\t$};
+  \draw[axisline] (-3.4,-3.55) -- (-3.4,3.7) node[above, lbl] {$\theta_2$};
+  \foreach \t in {-3,...,3}
+    \draw[black!60] (-3.4,\t) -- (-3.27,\t)
+      node[at={(-3.47,\t)}, left, font=\tiny, black!70] {$\t$};
+  % null mixture atoms: two in the belly, two out along the cone
+  \node[nullatom] at (-0.4,0.6) {};
+  \node[lbl, below left=-2pt] at (-0.4,0.6) {$\bm{\nu}_1$};
+  \node[nullatom] at (0.5,-1.1) {};
+  \node[lbl, below left=-2pt] at (0.5,-1.1) {$\bm{\nu}_2$};
+  \node[nullatom] at (1.7,-0.1) {};
+  \node[lbl, below=1pt] at (1.7,-0.1) {$\bm{\nu}_3$};
+  \node[nullatom] at (3.4,0.8) {};
+  \node[lbl, above=2pt] at (3.4,0.8) {$\bm{\nu}_4$};
+  % alternative atoms, outside
+  \node[altatom] at (-1.6,1.6) {};
+  \node[lbl, above left=-2pt] at (-1.6,1.6) {$\bm\mu_1$};
+  \node[altatom] at (-2.2,-1.2) {};
+  \node[lbl, left=2pt] at (-2.2,-1.2) {$\bm\mu_2$};
+  \node[altatom] at (0.6,-2.9) {};
+  \node[lbl, right=2pt] at (0.6,-2.9) {$\bm\mu_3$};
+\end{tikzpicture}
+```
 :::
 :::
 
-::: notes
-Timing: 1 minute.
-Point-optimal tests commit to a point of the alternative; log-optimality commits to a distribution Q. One sentence, for Max. TODO: add King (1987) to bibliography.bib if you use it.
-:::
 
 # Progress, again
 
@@ -1275,3 +1300,38 @@ slides/fig/alpha_sampling_effort.svg (recipe A).
   * measure the gap and growth attained
   * Compute an interval that contains the log-optimal growth
 - My Gaussian example goes beyond finite distributions
+
+
+## A prior over the alternative
+
+:::: {.columns}
+::: {.column width="55%"}
+```{=html}
+<div id="gw5-fig"></div>
+```
+:::
+::: {.column style="width: 45%; font-size: 0.7em;"}
+- Replace the point $\boldsymbol\mu$ by a mixture $Q = P_{W_1}$.
+- The rescaled $E_W$ is then a Bayes factor with numerator prior $W_1$, divided by $G_W$.
+- This closes the loop with the Bayesian audit: the denominator prior is chosen, not guessed.
+
+```{=html}
+<div id="gw5-panel"></div>
+<script>
+(function () {
+  var nul = { atoms: [[0.40, 0.40, 0.20], [0.40, 0.20, 0.40]], weights: [0.5, 0.5] };
+  var twoPoint = { label: "two-point alternative", nul: nul,
+    alt: { atoms: [[0.50, 0.30, 0.20], [0.45, 0.20, 0.35]], weights: [0.5, 0.5] } };
+  var prior = { label: "prior sample", nul: nul, alt: GW.priorSample(50, 1) };
+  GW.ternary({
+    fig: "gw5-fig", panel: "gw5-panel", name: "widget5", n: 10, nMax: 12,
+    alt: twoPoint.alt, nul: nul,
+    editNull: true, editAlt: true, buttons: ["fw", "reweight"],
+    presets: [twoPoint, prior]
+  });
+})();
+</script>
+```
+:::
+::::
+

@@ -72,3 +72,12 @@
 .gw-playback .gw-sup, .gw-reader .gw-sup { width: 100%; }
 .gw-supv { font-weight: 600; display: inline-block; min-width: 3.6em; text-align: left; }
 .gw-playback .gw-sup { font-size: 17px; margin-top: 0; }
+
+/* BnB slide: editor on the left, search on the right. */
+#gwb-fig .gw-ternary { max-height: 420px; }
+#gwb-panel { margin-top: 6px; }
+#gwb-panel .gw-row { gap: 6px 10px; }
+.gw-bnb .gw-bnb-tri { max-height: 330px; }
+.gw-bnb .gw-sup { width: 100%; }
+.gw-bnb .gw-win { min-width: 9em; }
+.gw-bnb-info { margin-left: auto; font-size: 15px; }

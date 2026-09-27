@@ -36,6 +36,7 @@ window.GW = (function () {
   // Drawn over the field, whose centre (g = 1) is near white.
   var CONTOUR = themed("--gw-contour", "#555");
   var OUTLINE = themed("--gw-outline", "#222"); // atom markers
+  var ACCENT = themed("--gw-accent", "#7058be"); // highlights
   var LIM = Math.log10(20);
   // log10 g on a red-blue scale centred at g = 1, red above 1. Atoms get a
   // dark outline so the blue and vermillion markers stay visible on it.
@@ -613,6 +614,7 @@ window.GW = (function () {
       drawAtoms();
       if (cfg.cSlider) cUpdate(logC, res.gmax, res.maxr);
       showSup(res.gmax);
+      if (cfg.onUpdate) cfg.onUpdate(state, res);
     }
     var pending = false;
     function schedule() {
@@ -748,6 +750,221 @@ window.GW = (function () {
       ]);
     }
     draw();
+  }
+
+  // --- certifying G_W by branch and bound ----------------------------------
+  /* g_W is a Bernstein polynomial: on any sub-triangle of the simplex its
+   * Bernstein coefficients bound it above (they are all positive and g_W lies
+   * in their convex hull), and the three corner coefficients are exact values
+   * of g_W. So the search keeps a partition of the null into triangles, each
+   * with an upper bound (its largest coefficient); the best corner value seen
+   * so far is the incumbent (a lower bound on G_W). Each step bisects the
+   * longest edge of the cell with the highest bound -- a de Casteljau step
+   * along that edge -- and prunes every cell whose bound cannot beat the
+   * incumbent. It stops when the bound and the incumbent agree to TOL. */
+  var BNB_TOL = 1e-4, BNB_MAX = 4000;
+
+  function BnB(n, r, Y) {
+    var N1 = n + 1;
+    function at(b, i, j) { return b[i * N1 + j]; }
+    function cellOf(V, b) {
+      var ub = 0;
+      for (var i = 0; i <= n; i++) for (var j = 0; j <= n - i; j++) ub = Math.max(ub, at(b, i, j));
+      var corners = [at(b, n, 0), at(b, 0, n), at(b, 0, 0)];
+      return { V: V, b: b, ub: ub, corners: corners, status: "live" };
+    }
+    // Reorder a cell's vertices; exponents follow their vertices.
+    function permute(cell, order) {
+      var b = new Float64Array(N1 * N1);
+      for (var i = 0; i <= n; i++) for (var j = 0; j <= n - i; j++) {
+        var e = [i, j, n - i - j];
+        b[e[order[0]] * N1 + e[order[1]]] = at(cell.b, i, j);
+      }
+      return { V: order.map(function (k) { return cell.V[k]; }), b: b };
+    }
+    // Bisect the edge between vertices p and q: with the third vertex's
+    // exponent k fixed, each row is a univariate Bernstein polynomial along
+    // the edge, split at its midpoint by de Casteljau.
+    function split(cell, p, q) {
+      var o = 3 - p - q, c = permute(cell, [p, q, o]);
+      var P = c.V[0].map(function (v, i) { return (v + c.V[1][i]) / 2; });
+      var b1 = new Float64Array(N1 * N1), b2 = new Float64Array(N1 * N1);
+      for (var k = 0; k <= n; k++) {
+        var d = n - k, row = [];
+        for (var j = 0; j <= d; j++) row.push(at(c.b, d - j, j));
+        var left = [row[0]], right = [row[d]];
+        for (var s = 1; s <= d; s++) {
+          for (var t = 0; t <= d - s; t++) row[t] = (row[t] + row[t + 1]) / 2;
+          left.push(row[0]); right.unshift(row[d - s]);
+        }
+        for (var jj = 0; jj <= d; jj++) {
+          b1[(d - jj) * N1 + jj] = left[jj];     // (V0, P, V2)
+          b2[(d - jj) * N1 + jj] = right[jj];    // (P, V1, V2)
+        }
+      }
+      return [cellOf([c.V[0], P, c.V[2]], b1), cellOf([P, c.V[1], c.V[2]], b2)];
+    }
+    function longestEdge(cell) {
+      var best = null, len = -1;
+      [[0, 1], [0, 2], [1, 2]].forEach(function (e) {
+        var a = toXY(cell.V[e[0]]), b = toXY(cell.V[e[1]]);
+        var l = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (l > len) { len = l; best = e; }
+      });
+      return best;
+    }
+
+    var full = new Float64Array(N1 * N1);
+    Y.forEach(function (c, idx) { full[c[0] * N1 + c[1]] = r[idx]; });
+    var root = cellOf([T1, T2, T3], full);
+    // The two pieces of the null, theta1 <= theta2 and theta1 <= theta3.
+    var cells = [split(root, 0, 1)[1], split(root, 0, 2)[1]];
+    // prunedMax: pruned cells are only proven not to beat the incumbent by
+    // more than TOL, so their bounds still count towards the upper bound.
+    var inc = 0, incAt = null, iter = 0, history = [], done = false, prunedMax = 0;
+    function offer(cell) {
+      cell.corners.forEach(function (v, k) { if (v > inc) { inc = v; incAt = cell.V[k]; } });
+    }
+    cells.forEach(offer);
+    function prune() {
+      cells.forEach(function (c) {
+        if (c.status === "live" && c.ub <= inc * (1 + BNB_TOL)) { c.status = "pruned"; prunedMax = Math.max(prunedMax, c.ub); }
+      });
+    }
+    function bound() {
+      var ub = Math.max(inc, prunedMax);
+      cells.forEach(function (c) { if (c.status === "live") ub = Math.max(ub, c.ub); });
+      return ub;
+    }
+    prune();
+    history.push({ lo: inc, hi: bound() });
+    var maxUb = d3.max(cells, function (c) { return c.ub; });
+
+    function step() {
+      if (done) return false;
+      var best = null;
+      cells.forEach(function (c) { if (c.status === "live" && (!best || c.ub > best.ub)) best = c; });
+      if (!best || iter >= BNB_MAX) { done = true; return false; }
+      var e = longestEdge(best), kids = split(best, e[0], e[1]);
+      best.status = "split";
+      kids.forEach(function (k) { offer(k); cells.push(k); });
+      prune();
+      cells = cells.filter(function (c) { return c.status !== "split"; });
+      iter += 1;
+      history.push({ lo: inc, hi: bound() });
+      if (!cells.some(function (c) { return c.status === "live"; })) done = true;
+      return !done;
+    }
+    return {
+      step: step, cells: function () { return cells; }, history: history,
+      get inc() { return inc; }, get incAt() { return incAt; }, get iter() { return iter; },
+      get done() { return done; }, maxUb: maxUb
+    };
+  }
+
+  /* cfg: { editor: <ternary cfg>, fig: element or id for the search panel } */
+  function certify(cfg) {
+    var fig = typeof cfg.fig === "string" ? document.getElementById(cfg.fig) : cfg.fig;
+    fig.classList.add("gw", "gw-bnb");
+
+    var svg = d3.select(fig).append("svg").attr("class", "gw-bnb-tri").attr("viewBox", "0 0 500 462").attr("width", "100%");
+    var cellLayer = svg.append("g");
+    svg.append("g").selectAll("path").data(PIECES).join("path").attr("d", String)
+      .attr("fill", "none").attr("stroke", LINE).attr("stroke-width", 1.2).attr("stroke-dasharray", "5 4");
+    svg.append("path").attr("d", SIMPLEX).attr("fill", "none").attr("stroke", LINE).attr("stroke-width", 1.4);
+    var mark = svg.append("g");
+    vertexLabels(svg.append("g"));
+
+    var out = el("div", "gw-sup");
+    out.innerHTML = "\\(G_W \\in\\) <span class=\"gw-supv gw-win\"></span>";
+    var win = out.querySelector(".gw-win");
+    var info = el("div", "gw-note gw-bnb-info");
+    fig.append(out);
+
+    var chart = d3.select(fig).append("svg").attr("class", "gw-bnb-chart").attr("viewBox", "0 0 500 150").attr("width", "100%");
+    var cm = { l: 56, r: 10, t: 10, b: 26 };
+
+    var controls = row("gw-controls");
+    var runBtn = button("certify", function () { if (search && search.done) restart(); running = !running; runBtn.textContent = running ? "pause" : "certify"; if (running) tick(); });
+    function pause() { running = false; clearTimeout(timer); runBtn.textContent = "certify"; }
+    controls.append(runBtn,
+      button("step", function () { pause(); if (search) { search.step(); draw(); } }),
+      // Back to the two pieces, paused, ready to step through.
+      button("reset", function () { pause(); restart(); }),
+      info);
+    fig.append(controls);
+
+    var search = null, latest = null, running = false, timer = null, debounce = null;
+
+    function restart() {
+      if (!latest) return;
+      search = BnB(latest.n, latest.r, latest.Y);
+      draw();
+    }
+    function tick() {
+      clearTimeout(timer);
+      if (!running || !search) return;
+      // Slow at first so each split is visible, then faster.
+      var k = 1 + Math.floor(search.iter / 25);
+      for (var i = 0; i < k; i++) if (!search.step()) break;
+      draw();
+      if (search.done) { running = false; runBtn.textContent = "certify"; return; }
+      timer = setTimeout(tick, 70);
+    }
+
+    function draw() {
+      if (!search) return;
+      var cells = search.cells(), lo = search.inc;
+      var col = d3.scaleLinear([0, 1], [BG, ACCENT]).interpolate(d3.interpolateLab);
+      var span = Math.log(Math.max(search.maxUb, lo * 1.0001) / lo);
+      cellLayer.selectAll("path").data(cells).join("path")
+        .attr("d", function (c) { return poly(c.V); })
+        .attr("fill", function (c) {
+          return c.status === "pruned" ? GRID : col(Math.min(1, Math.log(c.ub / lo) / span * 0.8 + 0.2));
+        })
+        .attr("stroke", function (c) { return c.status === "pruned" ? BG : LINE; })
+        .attr("stroke-width", function (c) { return c.status === "pruned" ? 0.6 : 0.8; });
+      var p = search.incAt ? toXY(search.incAt) : null;
+      mark.selectAll("path").data(p ? [p] : []).join("path")
+        .attr("d", d3.symbol(d3.symbolStar, 180)())
+        .attr("transform", function (d) { return "translate(" + d[0] + "," + d[1] + ")"; })
+        .attr("fill", W0).attr("stroke", OUTLINE).attr("stroke-width", 1);
+
+      var h = search.history, last = h[h.length - 1];
+      win.textContent = "[" + last.lo.toFixed(5) + ", " + last.hi.toFixed(5) + "]";
+      var live = cells.filter(function (c) { return c.status === "live"; }).length;
+      info.textContent = search.iter + " splits · " + live + " live cells" + (search.done ? " · certified" : "");
+
+      var x = d3.scaleLinear([0, Math.max(20, search.iter)], [cm.l, 500 - cm.r]);
+      var y = d3.scaleLog([Math.min(1, d3.min(h, function (d) { return d.lo; })) * 0.95, d3.max(h, function (d) { return d.hi; }) * 1.05], [150 - cm.b, cm.t]);
+      chart.selectAll("*").remove();
+      chart.append("path").datum(h).attr("fill", ACCENT).attr("fill-opacity", 0.18)
+        .attr("d", d3.area().x(function (d, i) { return x(i); }).y0(function (d) { return y(d.lo); }).y1(function (d) { return y(d.hi); }));
+      [["hi", ACCENT], ["lo", INK]].forEach(function (f) {
+        chart.append("path").datum(h).attr("fill", "none").attr("stroke", f[1]).attr("stroke-width", 2)
+          .attr("d", d3.line().x(function (d, i) { return x(i); }).y(function (d) { return y(d[f[0]]); }));
+      });
+      chart.append("line").attr("x1", cm.l).attr("x2", 500 - cm.r).attr("y1", y(1)).attr("y2", y(1))
+        .attr("stroke", MUTED).attr("stroke-dasharray", "2 4");
+      chart.append("g").attr("transform", "translate(0," + (150 - cm.b) + ")").call(d3.axisBottom(x).ticks(5, "~d"));
+      chart.append("g").attr("transform", "translate(" + cm.l + ",0)").call(d3.axisLeft(y).ticks(4, "~g"));
+      chart.selectAll(".tick text").attr("font-size", 13);
+      chart.append("text").attr("x", 500 - cm.r).attr("y", cm.t + 12).attr("text-anchor", "end").attr("font-size", 14)
+        .attr("fill", MUTED).text("bound and incumbent, by split");
+    }
+
+    var editorCfg = Object.assign({}, cfg.editor, {
+      onUpdate: function (st, res) {
+        latest = { n: st.n, r: Array.from(res.r), Y: res.L.Y };
+        // Re-certify once the mixture stops changing.
+        clearTimeout(debounce);
+        debounce = setTimeout(function () {
+          restart();
+          running = true; runBtn.textContent = "pause"; tick();
+        }, 250);
+      }
+    });
+    ternary(editorCfg);
   }
 
   // --- reading a ternary diagram ------------------------------------------
@@ -957,6 +1174,6 @@ window.GW = (function () {
   return {
     priorSample: priorSample,
     W0: W0, W1: W1, fieldColour: fieldColour, evaluate: evaluate, reweight: reweight,
-    ternary: ternary, line: line, playback: playback, reader: reader, snapshot: snapshot
+    ternary: ternary, line: line, playback: playback, reader: reader, certify: certify, BnB: BnB, snapshot: snapshot
   };
 })();
