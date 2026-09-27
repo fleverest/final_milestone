@@ -448,7 +448,7 @@ The main advice: *finish the literature review*
 | 5 | Log-optimal election auditing                     | **New manuscript: ALE**                          | 80% |
 | 6 | Empirical performance study                       | Unchanged, awaiting new methods to include       | 50% |
 | 7 | Secretly sampling with replacement                | Unchanged, **scope reduced**                     | 50% |
-| 8 | Conclusion                                        | Empty                                            | 20% |
+| 8 | Conclusion                                        | Conjectures only                                 | 20% |
 :::
 
 - The manuscript is the biggest contribution
@@ -1135,7 +1135,7 @@ gantt
 - The question: what does decomposing the plurality hypotheses into pairs cost?
 - Last year: a direct Bayesian test, valid for a finite horizon $T$
 - This year: direct ALE e-variables, for fixed batches
-- Next: batch-sequential tests versus pairwise super-martingales
+- Next: batch-sequential tests versus pairwise supermartingales
 
 
 ## References {.smaller .scrollable}
@@ -1272,7 +1272,7 @@ The figure shows each pair as a projection to a one-dimensional problem with the
 
 - They fit the projection with Frank–Wolfe and stop when iterates stop changing
 - No guarantees
-- I accept the final iterate is as suboptimal
+- I accept the final iterate as suboptimal
   * Restore validity via rigorous bounds
   * measure the gap and growth attained
   * Compute an interval that contains the log-optimal growth
