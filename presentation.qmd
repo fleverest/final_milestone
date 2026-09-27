@@ -986,7 +986,7 @@ All in an open-source R package `ripr`
   * Better growth achieved in limited CPU time
 
 
-## Useful beyond election audits
+## Useful beyond election audits {style="--list-gap: 2em;"}
 
 ::: {.columns}
 ::: {.column width="50%"}
@@ -996,7 +996,18 @@ All in an open-source R package `ripr`
 - Other families within reach
 :::
 ::: {.column width="50%"}
-```{.tikz width="100%"}
+```{.tikz width="100%" additionalPackages="\usepackage{bm}"}
+\definecolor{wone}{HTML}{0072B2}   % Okabe-Ito blue       -> alternative
+\definecolor{wzero}{HTML}{D55E00}  % Okabe-Ito vermillion -> null
+\colorlet{regcol}{black}
+\tikzset{
+  regfill/.style={fill=nullfill},
+  regborder/.style={draw=black, line width=1.1pt},
+  lbl/.style={font=\small},
+  axisline/.style={draw=black!70, line width=0.6pt},
+  nullatom/.style={circle, fill=wzero, draw=black, line width=0.5pt, inner sep=0pt, minimum size=5pt},
+  altatom/.style={circle, fill=wone, draw=black, line width=0.5pt, inner sep=0pt, minimum size=5pt},
+}
 \begin{tikzpicture}[x=1cm, y=1cm]
   \begin{scope}
     \clip (-3.4,-3.55) rectangle (4.95,3.5);
@@ -1005,8 +1016,10 @@ All in an open-source R package `ripr`
     \fill[regfill]
       (3.9,3.147) -- (0.5,1.9) -- (-0.65,1.1) -- (-1.1,0.1)
       -- (-0.9,-1.0) -- (0.15,-2.05) -- (3.9,-3.234) -- cycle;
-    \fill[regfill, path fading=east]
-      (3.9,3.147) -- (4.9,3.513) -- (4.9,-3.55) -- (3.9,-3.234) -- cycle;
+    % a gradient to the background rather than path fading: fadings are
+    % soft masks, which pdftocairo drops when converting to SVG
+    \shade[left color=nullfill, right color=white, shading angle=90]
+      (3.86,3.132) -- (4.9,3.513) -- (4.9,-3.55) -- (3.86,-3.221) -- cycle;
     \draw[regborder]
       (0.5,1.9) -- (-0.65,1.1) -- (-1.1,0.1)
       -- (-0.9,-1.0) -- (0.15,-2.05);
@@ -1019,7 +1032,7 @@ All in an open-source R package `ripr`
     \foreach \p in {(0.5,1.9), (-0.65,1.1), (-1.1,0.1), (-0.9,-1.0),
                     (0.15,-2.05)}
       \fill[regcol!80!black] \p circle (1.1pt);
-    \node[lbl] at (1.0,1.5) {$R_k$};
+    \node[lbl] at (1.0,1.5) {$H_0$};
   \end{scope}
   % axes
   \draw[axisline] (-3.4,-3.55) -- (5.25,-3.55) node[right, lbl] {$\theta_1$};
@@ -1052,75 +1065,44 @@ All in an open-source R package `ripr`
 :::
 
 
-# Progress, again
-
-## Where the thesis stands
-
-::: {.placeholder}
-The "Now" progress table again, with this year's changes highlighted. See the comment above.
-:::
-
-::: notes
-Timing: 45 seconds.
-:::
-
 # What this unlocks
-
-<!-- Section budget: 4 minutes, 4 slides. -->
 
 ## Question 1: how many atoms does the RIPr need?
 
-- For $K = 3$ and a point alternative, two atoms suffice in every case I have run.
-- Conjecture: $K - 1$ atoms suffice for a point alternative. Is there an analytic form?
-- For mixture alternatives, almost certainly not.
+- For $K = 3$ and a point alternative
+  * two atoms suffice in every case I have run
+- Conjecture: $K - 1$ atoms suffice point alternatives
+  * Is there an analytic form?
+- What can we say about mixture alternatives?
 
-<!--
-OPTIONAL DEMO: widget 5 in playback mode, showing an EM fit of a two-atom null
-to the two-point alternative preset. Reuse the widget 6 trace format, one
-panel only.
--->
 
-::: notes
-Timing: 1 minute.
-Say "every case I have run", not "always"; the evidence is K = 2 and K = 3.
-TODO: timeline for this question.
-:::
+## Question 2: how (sub-)optimal are pairwise tests?
 
-## Question 2: how optimal are the pairwise martingales?
+- At a fixed sample size nothing can beat $E^*$
+  * $\implies$ pairwise is worse for fixed samples
+- $E^*$ is not a martingale, but batches can be multiplied
+  * Is this better or worse than the pairwise method?
+  * Conjecture: better for small-moderate batches, same as batch size$\to\infty$
+  * same $\implies$ pairwise approach "admissible"
 
-- At a fixed sample size nothing beats $E^*$, so the pairwise minimum is no better.
-- $E^*$ is not a martingale, but batches of it multiply into one (optional continuation).
-- How does the batch-sequential test compare with ALPHA per pair?
-- Conjecture: batches win at moderate $n$, and the gap vanishes as $n \to \infty$, which would make the pairwise approach admissible.
-
-::: notes
-Timing: 1.5 minutes.
-This is the question the thesis was organised around. It is the main study for November and December.
-Expect the question: what happens if an audit has to stop mid-batch?
-TODO: timeline for this question.
-:::
 
 ## Further extensions
 
-- Sampling without replacement: the same fit-then-bound recipe with multivariate hypergeometric likelihoods. Planned, not yet checked.
-- Instant-runoff audits: nulls that are also finite unions of convex pieces.
+- Sampling without replacement
+  * multivariate hypergeometric data
+  * expectation is also a polynomial
+  * same BNB algorithm should work: just change basis for coefficients
+- Instant-runoff voting (IRV) audits
+  * nulls used are also convex polyhedra
+  * "$H_0$: candidate $x$ is not eliminated"
 
-::: notes
-Timing: 30 seconds. OPTIONAL: merge into the previous slide if time is short.
-Do not claim the Bernstein bound carries over to the hypergeometric case until it is checked.
-:::
 
 ## Timeline to March 2027
-
-<!--
-Rebuilt from the Gantt chart in report/progress_report_2026.tex.
-New rows (not in the report): the large comparison study and the Monte Carlo
-Type I error checks. Their dates are placeholders; adjust them.
--->
 
 ```{mermaid}
 gantt
   dateFormat YYYY-MM-DD
+  todayMarker off
   axisFormat %b
   section Manuscript
   Gaussian location bound            :2026-10-01, 2026-11-30
@@ -1140,22 +1122,14 @@ gantt
   Submit thesis                      :milestone, 2027-03-31, 0d
 ```
 
-::: notes
-Timing: 1 minute.
-The large comparison study is chapter 5 rerun with comparable scenarios and the new methods.
-The Monte Carlo checks estimate each method's actual Type I error rate at the worst-case nulls.
-:::
 
 ## Conclusion
 
-- The question: what does decomposing the plurality null into pairs cost?
-- Last year: a direct Bayesian test, valid up to a horizon.
-- This year: direct e-variables that are log-optimal up to a measured gap, for any fit.
-- Next: batch-sequential audits against the pairwise martingales, to answer the question.
+- The question: what does decomposing the plurality hypotheses into pairs cost?
+- Last year: a direct Bayesian test, valid for a finite horizon $T$
+- This year: direct ALE e-variables, for fixed batches
+- Next: batch-sequential tests versus pairwise super-martingales
 
-::: notes
-Timing: 45 seconds. End on the question, then stop.
-:::
 
 ## References {.smaller .scrollable}
 
