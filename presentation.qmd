@@ -16,21 +16,6 @@ format:
     link-external-newwindow: true
     include-in-header:
       text: |
-        <style>
-          .placeholder {
-            border: 2px dashed #a8a18d; border-radius: 8px; padding: 0.6em 1em;
-            color: #6f6a5c; background: #efe8da; font-size: 0.55em; text-align: left;
-          }
-          .placeholder::before { content: "FIGURE TO BUILD: "; font-weight: bold; }
-          .fetch {
-            border: 2px dashed #1a8fa8; border-radius: 8px; padding: 0.6em 1em;
-            color: #1a8fa8; background: #e9eee6; font-size: 0.55em; text-align: left;
-          }
-          .fetch::before { content: "FIGURE TO FETCH: "; font-weight: bold; }
-          .bigq { font-size: 1.6em; text-align: center; margin-top: 2em; }
-          .new-row td { background: #f6dfc4; }
-          .paused-row td { background: #e8e2d4; }
-        </style>
         <link rel="stylesheet" href="slides/interactive/gw.css">
         <script src="slides/interactive/d3.min.js"></script>
         <script src="slides/interactive/gw.js"></script>
@@ -450,7 +435,7 @@ and unfortunately, choosing $\kappa$ to control Type I error at level $\alpha$ i
 ## At the last milestone (October 2025)
 
 ::: {style="font-size: 0.6em"}
-|Ch.| Title                                             | Summary                                          | Progress |
+|Sec.| Title                                             | Summary                                          | Progress |
 |---|---------------------------------------------------|--------------------------------------------------|---|
 | 1 | Introduction                                      | The stuff we just talked about                   | Placeholder |
 | 2 | Sequential tests for auditing plurality elections | Literature review                                | 50% |
@@ -467,7 +452,7 @@ The main advice: *finish the literature review*
 ## Now (September 2026)
 
 ::: {style="font-size: 0.6em"}
-|Ch.| Title                                             | Summary                                          | Progress |
+|Sec.| Title                                             | Summary                                          | Progress |
 |---|---------------------------------------------------|--------------------------------------------------|---|
 | 1 | Introduction                                      | Rewritten around the cost of decomposition       | 90% |
 | 2 | Sequential tests for auditing plurality elections | **SAVI and Bayesian sections written (+18 pgs)** | 95% |
@@ -1097,6 +1082,42 @@ All in an open-source R package `ripr`
   * "$H_0$: candidate $x$ is not eliminated"
 
 
+# What's next?
+
+## Now (September 2026)
+
+::: {style="font-size: 0.6em"}
+|Sec.| Title                                            | Summary                                          | Progress |
+|---|---------------------------------------------------|--------------------------------------------------|---|
+| 1 | Introduction                                      | Rewritten around the cost of decomposition       | 90% |
+| 2 | Sequential tests for auditing plurality elections | SAVI and Bayesian sections written               | 95% |
+| 3 | Post-election audits for plurality                | Pairwise decomposition as a map to 1D            | 90% |
+| 4 | Risk-limiting Bayesian audits                     | Calibrating Bayesian audits to be risk-limiting  | 95% |
+| 5 | Log-optimal election auditing                     | New manuscript: ALE                              | 80% |
+| 6 | Empirical performance study                       | Unchanged, awaiting new methods to include       | 50% |
+| 7 | Secretly sampling with replacement                | Unchanged, scope reduced                         | 50% |
+| 8 | Conclusion                                        | Conjectures only                                 | 20% |
+:::
+
+
+## Plan (March 2027)
+
+::: {style="font-size: 0.6em"}
+|Sec.| Title                                            | Summary                                          | Remaining: |
+|---|---------------------------------------------------|--------------------------------------------------|------|
+| 1 | Introduction                                      | Rewritten around the cost of decomposition       | 10%  |
+| 2 | Sequential tests for auditing plurality elections | **Finish mapping out research gaps**             | 5%   |
+| 3 | Post-election audits for plurality                | Pairwise decomposition as a map to 1D            | 10%  |
+| 4 | Risk-limiting Bayesian audits                     | Calibrating Bayesian audits to be risk-limiting  | 5%   |
+| 5 | Log-optimal election auditing                     | New manuscript: ALE                              | 20%  |
+| 6 | **Log-optimal batch-sequential audits**           | **Plan: compare pairwise vs ALE-batch approach** | 100% |
+| 7 | Empirical performance study                       | **Big suite that compares average sample sizes** | 50%  |
+| 8 | Secretly sampling with replacement                | **Quantify cost of sampling with replacement**   | 50%  |
+| 9 | Conclusion                                        | Replace                                          | 80%  |
+:::
+
+* There is an option to write up my software contribution for a JCGS-like audience
+
 ## Timeline to March 2027
 
 ```{mermaid}
@@ -1105,23 +1126,21 @@ gantt
   todayMarker off
   axisFormat %b
   section Manuscript
-  Gaussian location bound            :2026-10-01, 2026-11-30
-  Submit to arXiv                    :milestone, 2026-11-30, 0d
+  Gaussian bounds for ALE manuscript :2026-10-01, 2026-11-30
+  Submit ALE to arXiv                :milestone, 2026-11-30, 0d
   section Batch-sequential audits
   Batch-sequential vs pairwise study :2026-11-01, 2026-12-31
-  Write up as a paper                :2026-12-01, 2026-12-31
+  Write batch-seq paper?             :2026-12-01, 2026-12-31
   Philip Stark visiting              :2026-12-01, 2026-12-31
   section Remaining chapters
-  Write chapter 6 from manuscript    :2027-01-01, 2027-01-31
-  Large comparison study             :2027-01-01, 2027-02-28
-  Monte Carlo Type I error checks    :2027-01-15, 2027-02-15
-  Larger worst-case simulation (ch 4) :2027-01-01, 2027-01-31
-  Sampling proof and K > 2 (ch 7)    :2027-02-01, 2027-02-28
+  Large full comparison study        :2027-01-01, 2027-02-28
+  Larger Bayesian simulation (ch 4)  :2027-01-01, 2027-01-31
   section Thesis
-  Integrate, conclusion, revisions   :2027-02-01, 2027-03-31
+  Integrate, conclusion, revisions   :2027-01-01, 2027-03-31
   Submit thesis                      :milestone, 2027-03-31, 0d
 ```
 
+* Can write up software contribution if things turn out to be faster.
 
 ## Conclusion
 
@@ -1252,10 +1271,6 @@ The figure shows each pair as a projection to a one-dimensional problem with the
 
 - A mathematical device, not a physical requirement: reuse ballots already drawn whenever the model asks for a repeat.
 - The cost is the finite-population correction, expected to be small for large elections.
-
-::: {.fetch}
-slides/fig/alpha_sampling_effort.svg (recipe A).
-:::
 
 
 ## Is any Bayes factor an e-process for $K > 2$? {visibility="uncounted"}
